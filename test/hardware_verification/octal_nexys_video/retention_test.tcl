@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Retention / refresh test over JTAG-AXI: fill the memory, wait idle, read everything back.
 #   vivado -mode batch -source retention_test.tcl -tclargs <bitfile|-> <wait minutes> <result file> [MB] [patterns]
 #   e.g. ... -tclargs build/top_quad.bit 20 build/retention.txt 64 "hash inv"

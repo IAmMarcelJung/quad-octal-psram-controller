@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 log -r /*;
 add wave sim:/Octal_SPI_Controller_wrapper/Memory/top/PoweredUp
 add wave sim:/Octal_SPI_Controller_wrapper/clk

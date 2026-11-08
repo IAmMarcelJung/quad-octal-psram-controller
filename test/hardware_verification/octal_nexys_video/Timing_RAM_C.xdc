@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 ##############################################################################
 # psram_timing.xdc
 # Timing constraints for the OctalSPI controller (OctalSPI.v) talking to the

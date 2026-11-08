@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 ### This file is a general .xdc for the Nexys Video Rev. A
 ### To use it in a project:
 ### - uncomment the lines corresponding to used pins

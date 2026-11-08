@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 AXIInterface checks with the legacy MemoryController (INTERFACE_TYPE = "SPI") and no memory model
 (test/cocotb_wrapper/Legacy_SPI_AXI_wrapper.v, the SPI data lines are pulled up).

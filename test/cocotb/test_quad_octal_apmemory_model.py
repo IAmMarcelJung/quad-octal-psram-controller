@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 Tests for OctalMemoryController_quad with CHIP_TYPE = 2 (APMemory APS12808L), the tapeout/hardware setting.
 

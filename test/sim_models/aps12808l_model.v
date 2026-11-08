@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 `timescale 1ps / 1ps
 /*
 Behavioral model of the APMemory APS12808L-3OBMx Octal DDR PSRAM (Xccela, datasheet Rev. 1.5).

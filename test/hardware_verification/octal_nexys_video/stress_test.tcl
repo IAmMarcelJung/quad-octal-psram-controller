@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Memory stress test over JTAG-AXI, errors counted per chip (byte lane 0..3 = RAM A..D).
 #   vivado -mode batch -source stress_test.tcl -tclargs <bitfile|-> <passes> <result file>
 # Patterns per pass, each over STRESS_BYTES (written in 1 KB bursts, read back in 1 KB bursts):
