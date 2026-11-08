@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Write bitstreams with different DRIVE / SLEW on the PSRAM clock output from the routed checkpoint.
 #   vivado -mode batch -source slew_variants.tcl      (needs build/top_quad_routed.dcp from build_quad.tcl)
 # All four PSRAMs share one CLK net on the FMC board, so every variant affects all chips.

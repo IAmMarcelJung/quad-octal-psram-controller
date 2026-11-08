@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0 AND MIT
 /*
 Copyright (c) 2018 Alex Forencich
 Copyright (c) 2026 Timo Braungardt (modifications)

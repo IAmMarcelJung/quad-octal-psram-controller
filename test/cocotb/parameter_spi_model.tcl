@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 log -r /*;
 add wave sim:/SPI_wrapper/Memory/PoweredUp;
 add wave sim:/SPI_wrapper/manager_serial_out ;

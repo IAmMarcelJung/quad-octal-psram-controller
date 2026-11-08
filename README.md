@@ -37,3 +37,8 @@ For python the [Black formatter](https://marketplace.visualstudio.com/items?item
 ```
 "black-formatter.args": ["--line-length", "100"]
 ```
+
+## License
+This project is licensed under the [Apache License 2.0](LICENSE).
+Some files are derived from third-party work under the MIT License; they keep their original notices and are listed in [NOTICE](NOTICE).
+Each source file carries an `SPDX-License-Identifier` header.

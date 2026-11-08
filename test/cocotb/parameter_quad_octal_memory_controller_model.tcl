@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 log -r /*;
 add wave sim:/Quad_Octal_Memory_Controller_wrapper/clk;
 add wave sim:/Quad_Octal_Memory_Controller_wrapper/reset;

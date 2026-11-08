@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Build the quad APMemory controller for the Nexys Video (xc7a200t) with the FMC PSRAM board.
 #
 #   vivado -mode batch -source build_quad.tcl                 -> build/top_quad.bit

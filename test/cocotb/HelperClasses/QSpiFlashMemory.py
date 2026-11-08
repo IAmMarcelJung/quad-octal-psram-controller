@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 import os
 import logging
 from cocotbext.qspi import QSpiSubordinateBase, QSpiBus, QSpiConfig

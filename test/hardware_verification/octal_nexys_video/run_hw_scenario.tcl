@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Program the board (optional) and run the scenario from hw_scenario.py over JTAG-AXI.
 #   python3 hw_scenario.py tcl > build/hw_scenario.tcl
 #   vivado -mode batch -source run_hw_scenario.tcl -tclargs [program]
