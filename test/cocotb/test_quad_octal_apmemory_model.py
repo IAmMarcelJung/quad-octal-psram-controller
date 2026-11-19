@@ -1419,3 +1419,138 @@ async def buffer_estimate_test(dut):
         dut._log.info("BUFFER " + lines[-1])
     with open(os.environ["BUFFER_ESTIMATE"], "a") as f:
         f.write("\n".join(lines) + "\n")
+
+
+# --------------------------------------------------------------------------------------------------------------
+# M2 sweep for the Doom / bottleneck study (not a pass/fail test, data is still checked)
+
+
+def m2_pauses(duty):
+    """Pause pattern for a channel: duty 1/1, 1/2 or 1/4 -> ready/valid in 1 of every N cycles ('1000' for 1/4)."""
+    n = {"1/1": 1, "1/2": 2, "1/4": 4}[duty]
+    return itertools.cycle([False] + [True] * (n - 1))
+
+
+@cocotb.test(skip=os.getenv("M2_SWEEP") is None)
+async def m2_sweep_test(dut):
+    """
+    One burst per case: cycles from the AR/AW handshake to the last R beat / B response, CE# windows (falling edges
+    of chip 0 CE#) and MB/s at 50 MHz. Then 32 sequential single-beat reads issued one after the other (CPU pattern).
+    Appends lines to the file named by $M2_SWEEP.
+    """
+    axi = await setup(dut)
+    before = model_errors(dut)
+    await with_timeout(axi.write(0, bytes(0x3000)))  # the model memory starts as X
+    await wait_idle(dut)
+    try:
+        cem = int(dut.Controller.CEM_MAX_CYCLES.value)
+    except AttributeError:
+        cem = -1
+
+    state = {"first": None, "last": None, "windows": 0, "done": False}
+
+    async def monitor():
+        cycle = 0
+        prev_ce = 1
+        while not state["done"]:
+            await RisingEdge(dut.clk)
+            cycle += 1
+            ce = int(dut.chip_select_neg.value) & 1
+            if state["first"] is None and (
+                (dut.s_axi_awvalid.value == 1 and dut.s_axi_awready.value == 1)
+                or (dut.s_axi_arvalid.value == 1 and dut.s_axi_arready.value == 1)
+            ):
+                state["first"] = cycle
+            if prev_ce == 1 and ce == 0 and state["first"] is not None:
+                state["windows"] += 1
+            prev_ce = ce
+            if (dut.s_axi_rvalid.value == 1 and dut.s_axi_rready.value == 1 and dut.s_axi_rlast.value == 1) or (
+                dut.s_axi_bvalid.value == 1 and dut.s_axi_bready.value == 1
+            ):
+                state["last"] = cycle
+
+    lines = []
+    for op, duties in [("read", ["1/1", "1/2", "1/4"]), ("write", ["1/1", "1/2"])]:
+        for beats in [1, 4, 8, 16, 64, 256]:
+            for duty in duties:
+                state.update(first=None, last=None, windows=0, done=False)
+                channel = axi.read_if.r_channel if op == "read" else axi.write_if.w_channel
+                if duty != "1/1":
+                    channel.set_pause_generator(m2_pauses(duty))
+                mon = cocotb.start_soon(monitor())
+                addr = 0x1000
+                data = pattern(4 * beats, beats)
+                if op == "read":
+                    mem_set(dut, addr, data)
+                    res = await with_timeout(axi.read(addr, 4 * beats), timeout_us=5000)
+                    assert res.data == data, f"read {beats} {duty}: data mismatch"
+                else:
+                    await with_timeout(axi.write(addr, data), timeout_us=5000)
+                await RisingEdge(dut.clk)
+                state["done"] = True
+                await RisingEdge(dut.clk)
+                mon.cancel()
+                if duty != "1/1":
+                    channel.clear_pause_generator()
+                    channel.pause = False
+                await wait_idle(dut)
+                if op == "write":
+                    assert bytes(mem_get(dut, addr, 4 * beats)) == data, f"write {beats} {duty}: data mismatch"
+                cycles = state["last"] - state["first"] + 1
+                mbs = 4 * beats / (cycles * CLK_PERIOD_NS * 1e-9) / 1e6
+                lines.append(f"cem={cem} {op:<5} beats={beats:>3} duty={duty} cycles={cycles:>5} "
+                             f"ce_windows={state['windows']:>3} MB/s={mbs:6.1f}")
+                dut._log.info(lines[-1])
+
+    # CPU pattern: 32 sequential single-beat reads, each issued after the previous one completed
+    n = 32
+    data = pattern(4 * n, 7)
+    mem_set(dut, 0x2000, data)
+    latencies = []
+    t = {"arvalid": None, "first": None, "last": None, "windows": 0}
+    done = False
+
+    async def cpu_monitor():
+        cycle = 0
+        prev_ce = 1
+        while not done:
+            await RisingEdge(dut.clk)
+            cycle += 1
+            ce = int(dut.chip_select_neg.value) & 1
+            if prev_ce == 1 and ce == 0:
+                t["windows"] += 1
+            prev_ce = ce
+            if dut.s_axi_arvalid.value == 1 and t["arvalid"] is None:
+                t["arvalid"] = cycle
+                if t["first"] is None:
+                    t["first"] = cycle
+            if dut.s_axi_rvalid.value == 1 and dut.s_axi_rready.value == 1:
+                latencies.append(cycle - t["arvalid"])
+                t["arvalid"] = None
+                t["last"] = cycle
+
+    mon = cocotb.start_soon(cpu_monitor())
+    got = b""
+    for i in range(n):
+        res = await with_timeout(axi.read(0x2000 + 4 * i, 4))
+        got += res.data
+    await RisingEdge(dut.clk)
+    done = True
+    mon.cancel()
+    assert got == data, "single-beat reads: data mismatch"
+    total = t["last"] - t["first"] + 1
+    lines.append(f"cem={cem} cpu32 single-beat reads: total={total} cycles/beat={total / n:.1f} "
+                 f"ARVALID->RVALID min/max={min(latencies)}/{max(latencies)} ce_windows={t['windows']} "
+                 f"MB/s={4 * n / (total * CLK_PERIOD_NS * 1e-9) / 1e6:.1f}")
+    dut._log.info(lines[-1])
+
+    check_no_model_errors(dut, before)
+    with open(os.environ["M2_SWEEP"], "a") as f:
+        f.write("\n".join(lines) + "\n")
+
+
+def test_quad_octal_apmemory_model_m2_sweep():
+    """M2 sweep at CE# limit 70 (default) and 350 cycles; appends to $M2_SWEEP (skipped if not set)."""
+    if os.getenv("M2_SWEEP"):
+        for cem in [None, 350]:
+            run(test_filter="m2_sweep_test", cem_max_cycles=cem, build_suffix="_m2")
