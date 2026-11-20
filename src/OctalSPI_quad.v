@@ -115,9 +115,6 @@ module OctalSPI_quad #(
     reg     [INDEX_STATES_MSB:0] state_reg;
     reg     [INDEX_STATES_MSB:0] state_nxt;
 
-    integer                      count_reg;
-    integer                      count_nxt;
-    integer                      latency_offset;
     reg     [    DATA_WIDTH-1:0] data_read_reg;
     reg                          need_next_word_nxt;
     reg                          need_next_word_reg;
@@ -139,6 +136,25 @@ module OctalSPI_quad #(
     localparam integer NUM_SHORT_LATENCY_CYCLES = (CHIP_TYPE == 1) ? LATENCY_CYCLES + 2 : LATENCY_CYCLES - 2;   // ToDo think about a better switch (issue #12)
     // APMemory runs with fixed read latency (MR0[5] = 1, set by the controller after reset): 2 * LC for every read
     localparam integer NUM_LONG_LATENCY_CYCLES = (CHIP_TYPE == 1) ? LATENCY_CYCLES * 2 + 2 : LATENCY_CYCLES * 2 - 2;
+
+    // Cycle counter of the state machine, sized for the largest value it is loaded with. Every state reloads it at
+    // 0, it never counts below 0.
+    localparam integer COUNT_MAX_LATENCY = ((NUM_LONG_LATENCY_CYCLES > NUM_SHORT_LATENCY_CYCLES) ?
+                                            NUM_LONG_LATENCY_CYCLES : NUM_SHORT_LATENCY_CYCLES) + 1;
+    localparam integer COUNT_MAX = (COUNT_MAX_LATENCY > ADDRESS_CYCLES) ? COUNT_MAX_LATENCY : ADDRESS_CYCLES;
+    localparam integer COUNT_WIDTH = $clog2(COUNT_MAX + 1);
+    // the values fit by construction of COUNT_WIDTH
+    /* verilator lint_off WIDTHTRUNC */
+    localparam [COUNT_WIDTH-1:0] COUNT_OPCODE = OPCODE_CYCLES - 1;
+    localparam [COUNT_WIDTH-1:0] COUNT_ADDRESS = ADDRESS_CYCLES - 1;
+    // the read needs one more cycle after the latency until the memory puts out data (+1), a write one less (-1)
+    localparam [COUNT_WIDTH-1:0] COUNT_LONG_LATENCY_READ = NUM_LONG_LATENCY_CYCLES + 1;
+    localparam [COUNT_WIDTH-1:0] COUNT_LONG_LATENCY_WRITE = NUM_LONG_LATENCY_CYCLES - 1;
+    localparam [COUNT_WIDTH-1:0] COUNT_SHORT_LATENCY_READ = NUM_SHORT_LATENCY_CYCLES + 1;
+    localparam [COUNT_WIDTH-1:0] COUNT_SHORT_LATENCY_WRITE = NUM_SHORT_LATENCY_CYCLES - 1;
+    /* verilator lint_on WIDTHTRUNC */
+    reg [COUNT_WIDTH-1:0] count_reg;
+    reg [COUNT_WIDTH-1:0] count_nxt;
     //localparam integer READ_LATENCY_IN_CYCLE = 1; // (issue #15)
 
     // ToDo: why was this in en_data_strobe?: | state_reg == WAIT_LATENCY 
@@ -196,13 +212,9 @@ module OctalSPI_quad #(
 
     always @(*) begin : state_machine_logic
         state_nxt = state_reg;
-        count_nxt = OPCODE_CYCLES - 1;
+        count_nxt = COUNT_OPCODE;
         has_latency_nxt = has_latency_reg;
         en_data_out_nxt = en_data_out_reg;
-
-        // the read needs one more cycle after the latency until the memory puts out data
-        // therefore +2
-        latency_offset = (i_config_read_data) ? 1 : -1;     // ToDo change (issue #12)
 
         case (state_reg)
             IDLE: begin
@@ -214,14 +226,14 @@ module OctalSPI_quad #(
 
             CS_LOW: begin
                 state_nxt = SEND_OPCODE;
-                count_nxt = OPCODE_CYCLES - 1;
+                count_nxt = COUNT_OPCODE;
             end
 
             SEND_OPCODE: begin
                 count_nxt = count_reg - 1;
                 if (count_reg == 0) begin
                     if (i_config_write_address) begin
-                        count_nxt = ADDRESS_CYCLES - 1;
+                        count_nxt = COUNT_ADDRESS;
                         state_nxt = SEND_ADDRESS;
                         has_latency_nxt = (CHIP_TYPE == 1) ? data_strobe_in : i_config_read_data;     // ToDo change (issue #12)
                     end else state_nxt = CS_HIGH;
@@ -232,8 +244,9 @@ module OctalSPI_quad #(
                 count_nxt = count_reg - 1;
 
                 if (count_reg == 0) begin
-                    if (has_latency_reg) count_nxt = NUM_LONG_LATENCY_CYCLES + latency_offset;
-                    else count_nxt = NUM_SHORT_LATENCY_CYCLES + latency_offset;
+                    if (has_latency_reg)  // ToDo change (issue #12)
+                        count_nxt = i_config_read_data ? COUNT_LONG_LATENCY_READ : COUNT_LONG_LATENCY_WRITE;
+                    else count_nxt = i_config_read_data ? COUNT_SHORT_LATENCY_READ : COUNT_SHORT_LATENCY_WRITE;
 
                     state_nxt = WAIT_LATENCY;
 

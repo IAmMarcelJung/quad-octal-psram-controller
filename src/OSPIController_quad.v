@@ -81,6 +81,19 @@ module OSPIController_quad #(
     // (rounded up).
     localparam integer RESET_CYCLES = MEMORY_RESET_CYCLES;
     localparam integer RESET_RECOVERY_CYCLES = (CLK_FREQ_HZ + 249_999) / 250_000;
+    localparam integer RESET_DONE_CYCLES = RESET_CYCLES + RESET_RECOVERY_CYCLES;
+
+    // Counter widths from their largest value (a Verilog integer would give 32 flip-flops each)
+    localparam integer RESET_COUNTER_WIDTH = $clog2(RESET_DONE_CYCLES + 1);
+    localparam integer CEM_COUNTER_WIDTH = $clog2(CEM_MAX_CYCLES + 1);
+    localparam integer DELAY_COUNTER_WIDTH = $clog2(DELAY_CYCLES + 1);
+    // the values fit by construction of the widths above
+    /* verilator lint_off WIDTHTRUNC */
+    localparam [RESET_COUNTER_WIDTH-1:0] RESET_LOW_END = RESET_CYCLES;
+    localparam [RESET_COUNTER_WIDTH-1:0] RESET_DONE = RESET_DONE_CYCLES;
+    localparam [CEM_COUNTER_WIDTH-1:0] CEM_MAX = CEM_MAX_CYCLES;
+    localparam [DELAY_COUNTER_WIDTH-1:0] DELAY_DONE = DELAY_CYCLES;
+    /* verilator lint_on WIDTHTRUNC */
 
     // Logic stuff
     reg  [ OPCODE_LENGTH-1:0] opcode_nxt;
@@ -139,8 +152,8 @@ module OSPIController_quad #(
     //localparam [OPCODE_LENGTH -1 : 0] OPCODE_LONG_ADDRESS_ENABLE = 8'h00;
 
     // CE# low time of the current memory transaction (tCEM)
-    integer cem_counter;
-    wire cem_timeout = (cem_counter >= CEM_MAX_CYCLES);
+    reg [CEM_COUNTER_WIDTH-1:0] cem_counter;
+    wire cem_timeout = (cem_counter >= CEM_MAX);
     // the write was cut (master stalled or tCEM): take no more beats, the AXI interface restarts the rest
     reg write_stop_reg;
     reg write_stop_nxt;
@@ -154,7 +167,7 @@ module OSPIController_quad #(
     // transactions. o_busy is held until the sequence is done.
     reg reset_spi;
     assign o_reset_neg = reset_spi;
-    integer reset_counter;
+    reg [RESET_COUNTER_WIDTH-1:0] reset_counter;
     reg memory_ready;
     reg init_done;
     wire config_start = memory_ready & ~init_done & ~config_is_config_operation & (control_state_reg == IDLE);
@@ -165,9 +178,9 @@ module OSPIController_quad #(
             reset_spi <= 1'b0;
             memory_ready <= 1'b0;
         end else begin
-            if (reset_counter != RESET_CYCLES + RESET_RECOVERY_CYCLES) reset_counter <= reset_counter + 1;
-            reset_spi <= (reset_counter >= RESET_CYCLES);
-            memory_ready <= (reset_counter == RESET_CYCLES + RESET_RECOVERY_CYCLES);
+            if (reset_counter != RESET_DONE) reset_counter <= reset_counter + 1'b1;
+            reset_spi <= (reset_counter >= RESET_LOW_END);
+            memory_ready <= (reset_counter == RESET_DONE);
         end
     end
 
@@ -219,7 +232,7 @@ module OSPIController_quad #(
     assign o_data_read = data_read_reg;
 
 
-    integer delay_fsm;  // ToDo: make this more beautifull - the state machine probably needs multiple delays. (issue #10)
+    reg [DELAY_COUNTER_WIDTH-1:0] delay_fsm;  // ToDo: make this more beautifull - the state machine probably needs multiple delays. (issue #10)
     always @(*) begin : control_logic
         address_nxt = address_reg;
         opcode_nxt = opcode_reg;
@@ -254,7 +267,7 @@ module OSPIController_quad #(
             end
 
             WAIT: begin
-                if (delay_fsm == DELAY_CYCLES) begin
+                if (delay_fsm == DELAY_DONE) begin
                     control_state_nxt = (config_is_config_operation) ? WRITE_CONFIG : WRITE;
                     opcode_nxt = (config_is_config_operation) ? OPCODE_WRITE_ANY_REG : OPCODE_WRITE;
                 end
@@ -289,10 +302,10 @@ module OSPIController_quad #(
             control_state_reg <= control_state_nxt;
             delay_fsm <= 0;
             if (control_state_reg == IDLE) cem_counter <= 0;
-            else if (!cem_timeout) cem_counter <= cem_counter + 1;
+            else if (!cem_timeout) cem_counter <= cem_counter + 1'b1;
 
             if (control_state_reg == WAIT) begin
-                delay_fsm <= delay_fsm + 1;
+                delay_fsm <= delay_fsm + 1'b1;
             end
 
             if (config_start) config_is_config_operation <= 1'b1;
