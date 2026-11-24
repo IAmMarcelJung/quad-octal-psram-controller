@@ -154,7 +154,7 @@ module OSPIController_quad #(
     // CE# low time of the current memory transaction (tCEM)
     reg [CEM_COUNTER_WIDTH-1:0] cem_counter;
     wire cem_timeout = (cem_counter >= CEM_MAX);
-    // the write was cut (master stalled or tCEM): take no more beats, the AXI interface restarts the rest
+    // the write was cut (manager stalled or tCEM): take no more beats, the AXI interface restarts the rest
     reg write_stop_reg;
     reg write_stop_nxt;
     wire write_word_valid = i_write_data_valid & ~write_stop_reg & ~cem_timeout;
@@ -354,7 +354,7 @@ module OSPIController_quad #(
                 if (i_last_word)
                     last_word_nxt = 1'b1;
 
-                // write without a beat (master stalls) or tCEM reached: send this word masked as the last one,
+                // write without a beat (manager stalls) or tCEM reached: send this word masked as the last one,
                 // so the memory transaction ends on a full clock, the rest is written after a restart
                 if (control_state_reg == WRITE && !last_word_reg && !write_word_valid) begin
                     data_mask_nxt = {STRB_WIDTH{1'b1}};
