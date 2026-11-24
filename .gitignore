@@ -17,12 +17,5 @@ test/memory_models/*
 *.jou
 *.txt
 !LICENSES/*.txt
-test/testbenches/*.mem
 .Xil/
 *.str
-
-# questa simulation files
-work/
-*.ini
-transcript
-*.wlf

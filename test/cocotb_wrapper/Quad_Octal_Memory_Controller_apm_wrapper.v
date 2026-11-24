@@ -10,8 +10,6 @@ module Quad_Octal_Memory_Controller_apm_wrapper #(
     parameter STRB_WIDTH = (DATA_WIDTH / 8),
     // Width of ID signal
     parameter ID_WIDTH = 8,
-    // Extra pipeline register on output
-    parameter PIPELINE_OUTPUT = 1'b0,
     // memory model
     parameter integer MEM_ADDR_BITS = 16,
     parameter integer REFRESH_PUSHOUT_PERCENT = 0,
@@ -97,12 +95,12 @@ module Quad_Octal_Memory_Controller_apm_wrapper #(
 
 
 
-    localparam INFINEON_CHIP = 1;
     localparam APMEMORY_CHIP = 2;
 
     OctalMemoryController_quad #(
         .ADDR_WIDTH(ADDR_WIDTH),
         .DATA_WIDTH(DATA_WIDTH),
+        .ID_WIDTH(ID_WIDTH),
         .CHIP_TYPE(APMEMORY_CHIP),
         .MEMORY_RESET_CYCLES(20000),  // 400 us, the model needs no supply ramp
         .CLK_FREQ_MIN_HZ(CLK_FREQ_MIN_HZ),
