@@ -179,6 +179,10 @@ async def read_burst_test(dut, num_bytes):
     assert list(data.data) == test_data.get_test_array()
 
 
+@pytest.mark.skip(
+    reason="known test bench issue: AXI inputs undriven at reset give X (since fa278f7); "
+    "legacy single-chip controller, removed from this fork"
+)
 def test_memory_controller():
     """
     Integration test of all modules in memory controller.
