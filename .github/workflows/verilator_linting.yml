@@ -49,7 +49,8 @@ jobs:
           for i in $(seq 0 $((count - 1))); do
             top=$(yq -r ".groups[$i].top" lint_groups_config.yml)
             files=$(yq -r ".groups[$i].files[]" lint_groups_config.yml | tr '\n' ' ')
-            echo "Linting: $top"
-            verilator --lint-only -Wall -Wno-UNUSEDSIGNAL --top-module "$top" $files || status=1
+            params=$(yq -r "(.groups[$i].params // [])[]" lint_groups_config.yml | sed 's/^/-G/' | tr '\n' ' ')
+            echo "Linting: $top $params"
+            verilator --lint-only -Wall -Wno-UNUSEDSIGNAL --top-module "$top" $params $files || status=1
           done
           exit $status
