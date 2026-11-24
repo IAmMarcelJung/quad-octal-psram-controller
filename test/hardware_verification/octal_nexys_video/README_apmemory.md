@@ -94,4 +94,3 @@ Notes:
   builds that variant into `build_posedge/`.
 - The controller holds RESET# of the memories low for 20 ms after reset, then writes MR0 (fixed latency). AXI accesses are held off (busy) until then.
 - The Digilent adapter can show up as two JTAG targets, the scripts pick the one with the FPGA.
-- `axi_verification_test.tcl` (older) still has expectations from the old address mapping.
