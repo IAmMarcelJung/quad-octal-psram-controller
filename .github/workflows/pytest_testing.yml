@@ -1,4 +1,4 @@
-name: Testing using cocodb and pytest
+name: Testing using cocotb and pytest
 
 on:
   push:
