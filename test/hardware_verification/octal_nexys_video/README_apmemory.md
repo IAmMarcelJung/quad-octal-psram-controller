@@ -15,7 +15,7 @@
 | `run_hw_scenario.tcl`, `hw_scenario.py` | One fixed AXI sequence that runs on the board (JTAG-AXI) and in simulation, results are compared word by word. |
 | `stress_test.tcl` | Board stress test: toggling / walking / random patterns over 64 KB, errors per chip, re-reads on mismatch. |
 | `slew_variants.tcl` | Bitstreams with DRIVE 4/8/12/16 x SLEW SLOW/FAST on the PSRAM clock (slew margin test). |
-| `Nexys-Video-Master_Quad.xdc`, `Timing_RAM_[A-D].xdc` | Pinout (matches Timo's gist) and IO timing. |
+| `Nexys-Video-Master_Quad.xdc`, `Timing_RAM_[A-D].xdc` | Pinout of the FMC PSRAM board and IO timing. |
 
 ## Simulation
 
@@ -49,7 +49,7 @@ Vivado 2025.1, board + FMC PSRAM board connected, SW0 (reset) off.
 
 ```sh
 cd test/hardware_verification/octal_nexys_video
-VIVADO=/home/marcel/Programs/Vivado/2025.1/Vivado/bin/vivado
+VIVADO=vivado   # Vivado 2025.1
 $VIVADO -mode batch -source build_quad.tcl                            # ~6 min, check build/timing_summary.rpt
 
 # scenario on the board and in the simulation, then compare

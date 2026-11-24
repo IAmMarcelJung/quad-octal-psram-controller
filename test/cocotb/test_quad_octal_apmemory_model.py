@@ -424,7 +424,7 @@ async def write_backpressure_test(dut):
 
 
 # --------------------------------------------------------------------------------------------------------------
-# Traffic of the SoC masters (chip-di-owas): all go through a verilog-axi crossbar, which sets the ID to
+# Traffic of the DI-OWAS SoC masters: all go through a verilog-axi crossbar, which sets the ID to
 # master ID | port << 4 and routes B / R back by ID. The crypto core uses verilog-axi axi_dma (read -> AES ->
 # write, bursts of up to 16 beats), and axi_dma_wr raises AWVALID of later bursts before it has the write data.
 
@@ -563,7 +563,7 @@ async def queued_bursts_with_stall_test(dut):
 @cocotb.test()
 async def write_waits_for_later_read_test(dut):
     """
-    DMA copy with different source / destination alignment (chip-di-owas crypto DMA bypass): the source is read in
+    DMA copy with different source / destination alignment (DI-OWAS crypto DMA bypass): the source is read in
     two bursts (15 beats up to a 64 B boundary, then 1 beat), the destination is written in one 16-beat burst whose
     W data comes from the reads. When the first read is done, the AW (with W data) and the second AR are both
     pending; the write can only finish after the second read has returned its data.
@@ -929,7 +929,7 @@ async def reset_during_read_test(dut):
     """
     A system reset in the middle of a read burst (async reset: CE# goes high right after a clock edge, while the
     memories still drive read data) must leave the memories usable: after the reset the controller re-initializes
-    them (MR0 write) and reads and writes work again. Found in the SoC simulation (chip-di-owas).
+    them (MR0 write) and reads and writes work again. Found in the DI-OWAS SoC simulation.
     """
     axi = await setup(dut)
     data = pattern(1024, 11)

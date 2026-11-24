@@ -35,8 +35,8 @@ set psram_tDQSCK_max 5.5
 set psram_tDQSQ      0.6   ;# DQS -> DQ skew (read)
 
 # --- Board delays between FPGA pin and PSRAM ball [ns] ---
-# TODO: replace with your real values (rule of thumb: ~0.17 ns per inch of trace,
-# add the FMC connector / cable / breakout board). Min and max cover tolerance.
+# Estimated for the FMC PSRAM board (~0.17 ns per inch of trace plus connector), min and max cover
+# tolerance. Adjust for a different board.
 set pcb_clk_min 0.92   ;# FPGA o_spi_bus_clock -> PSRAM CLK
 set pcb_clk_max 0.99
 set pcb_dq_min  0.59   ;# DQ / DM / CE# traces (same length assumed both ways)
