@@ -57,6 +57,8 @@
               # Simulation
               iverilog
               verilator
+              # Formatting (same versions as the CI check)
+              verible
             ];
             extra-python-packages =
               ps: with ps; [
@@ -65,6 +67,7 @@
                 cocotbext-axi
                 cocotbext-spi
                 pytest
+                black
               ];
           };
         }
