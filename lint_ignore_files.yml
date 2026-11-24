@@ -1,15 +1,10 @@
 # Files which should be ignored due to dependencies etc.
 files:
-  - src/Basic_AXI_SPI.v
-  - src/SPIController.v
-  - src/MemoryController.v
-  - src/OSPIController.v
-  - test/cocotb_wrapper/AXI_SPI_wrapper.v
-  - test/cocotb_wrapper/HyperRAM_wrapper.v
-  - test/cocotb_wrapper/SPI_wrapper.v
-  - test/cocotb_wrapper/Octal_SPI_wrapper.v
-  - test/cocotb_wrapper/Octal_SPI_Controller_wrapper.v
-  - test/cocotb_wrapper/Octal_Memory_Controller_wrapper.v
-  - test/cocotb_wrapper/Combined_SPI_wrapper.v
-  - test/cocotb_wrapper/Memory_Controller_wrapper.v
-  - test/hardware_verification/octal_nexys_video/top.v
+  # quad path: linted with its submodules in lint_groups_config.yml
+  - src/OctalMemoryController_quad.v
+  - src/OSPIController_quad.v
+  # quad path simulation / FPGA files (timing delays, not synthesized for the chip)
+  - test/cocotb_wrapper/Quad_Octal_Memory_Controller_wrapper.v
+  - test/cocotb_wrapper/Quad_Octal_Memory_Controller_apm_wrapper.v
+  - test/hardware_verification/octal_nexys_video/top_quad.v
+  - test/sim_models/aps12808l_model.v

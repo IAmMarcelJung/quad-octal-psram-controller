@@ -1,34 +1,18 @@
 # Files with dependencies are set up to be linted by the verilator CI job
+# Optional "params" are passed to verilator as -G<NAME>=<VALUE> (integer values only)
 groups:
-  - top: Basic_AXI_SPI
-    files: 
-      - src/Basic_AXI_SPI.v
-      - src/BasicSPI.v
-  - top: SPIController
-    files: 
-      - src/SPIController.v
-      - src/SPITransmitter.v
-  - top: MemoryController
-    files: 
-      - src/MemoryController.v
-      - src/SPIController.v
-      - src/SPITransmitter.v
-      - src/OSPIController.v 
-      - src/OctalSPI.v
-      - src/AXIInterface.v
   - top: OctalMemoryController_quad
     files: 
       - src/OctalMemoryController_quad.v
       - src/OSPIController_quad.v 
       - src/OctalSPI_quad.v
       - src/AXIInterface.v
-  - top: OctalMemoryController
-    files: 
-      - src/OctalMemoryController.v
-      - src/OSPIController.v 
-      - src/OctalSPI.v
+  # Tapeout configuration (APMemory), the default CHIP_TYPE=-1 is never built
+  - top: OctalMemoryController_quad
+    params:
+      - CHIP_TYPE=2
+    files:
+      - src/OctalMemoryController_quad.v
+      - src/OSPIController_quad.v
+      - src/OctalSPI_quad.v
       - src/AXIInterface.v
-  - top: OSPIController
-    files: 
-      - src/OSPIController.v
-      - src/OctalSPI.v

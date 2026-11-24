@@ -1,4 +1,4 @@
-QSPI Memory Controller
+Quad Octal PSRAM Controller (fork of QSPI Memory Controller by Timo Braungardt)
 Copyright (c) 2026 Timo Braungardt
 Copyright (c) 2026 DI-OWAS team (contributions by Marcel Jung)
 
@@ -14,18 +14,14 @@ https://github.com/alexforencich/cocotbext-axi) and remain under the MIT
 License. Their original copyright and permission notices are kept in the file
 headers.
 
-  src/AXI.v                      MIT, Copyright (c) 2018 Alex Forencich
-  src/Basic_AXI_SPI.v            MIT, Copyright (c) 2018 Alex Forencich
   src/AXIInterface.v             MIT, Copyright (c) 2018 Alex Forencich;
                                  modifications Copyright (c) 2026 Timo Braungardt
                                  (Apache-2.0 AND MIT)
-  test/cocotb/test_axi_ram.py    MIT, Copyright (c) 2020 Alex Forencich
 
-The following board constraint files are based on the Digilent Nexys Video
+The following board constraint file is based on the Digilent Nexys Video
 master XDC (https://github.com/Digilent/digilent-xdc, MIT License,
 Copyright (c) Digilent):
 
-  test/hardware_verification/octal_nexys_video/Nexys-Video-Master.xdc
   test/hardware_verification/octal_nexys_video/Nexys-Video-Master_Quad.xdc
 
 The vendor memory simulation models used by some tests (test/memory_models/)

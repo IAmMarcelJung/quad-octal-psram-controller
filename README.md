@@ -1,5 +1,8 @@
-# QSPI Memory Controller
-A memory controller with an AXI-Interface for SPI, and PSRAM Devices.
+# Quad Octal PSRAM Controller
+An AXI4 memory controller for four Octal SPI (xSPI) DDR PSRAMs in parallel, as used on the DI-OWAS chip.
+
+This fork only keeps the quad Octal SPI controller. The other controllers (SPI, Quad SPI, Hyperbus, single
+Octal SPI) are in the upstream repository.
 
 ## OWAS Files
 For the OWAS chip we want 4 Octal SPI controller in parallel.
