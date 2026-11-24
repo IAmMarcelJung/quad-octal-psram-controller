@@ -1,6 +1,9 @@
 name: Testing using cocodb and pytest
 
-on: [push]
+on:
+  push:
+    branches: [main]
+  pull_request:
 
 jobs:
   run_pytest:
