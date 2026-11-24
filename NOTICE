@@ -14,7 +14,7 @@ https://github.com/alexforencich/cocotbext-axi) and remain under the MIT
 License. Their original copyright and permission notices are kept in the file
 headers.
 
-  src/AXIInterface.v             MIT, Copyright (c) 2018 Alex Forencich;
+  src/AXI4Subordinate.v          MIT, Copyright (c) 2018 Alex Forencich;
                                  modifications Copyright (c) 2026 Timo Braungardt
                                  (Apache-2.0 AND MIT)
 

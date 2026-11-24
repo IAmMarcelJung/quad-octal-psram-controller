@@ -438,7 +438,7 @@ def test_quad_octal_memory_controller_model(wave=False):
     sources = [
         proj_path / "../../src/OSPIController_quad.v",
         proj_path / "../../src/OctalSPI_quad.v",
-        proj_path / "../../src/AXIInterface.v",
+        proj_path / "../../src/AXI4Subordinate.v",
         proj_path / "../../src/OctalMemoryController_quad.v",
         proj_path / "../../test/cocotb_wrapper/Quad_Octal_Memory_Controller_wrapper.v",
         proj_path / required_file,
