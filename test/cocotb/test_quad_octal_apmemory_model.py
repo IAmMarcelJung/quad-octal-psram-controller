@@ -174,7 +174,7 @@ async def axi_quiet_during_reset_test(dut):
     dut.test_number.value = dut.test_number.value + 1
     dut.reset.value = 1
     await ClockCycles(dut.clk, 2)  # the outputs are X until the first clock edge in reset
-    # the master gets no reset signal, so it keeps its requests valid during the reset
+    # the manager gets no reset signal, so it keeps its requests valid during the reset
     axi = AxiMaster(AxiBus.from_prefix(dut, "s_axi"), dut.clk)
     init_done = dut.Controller.SPI_Controller.init_done
     outputs = {name: getattr(dut, f"s_axi_{name}") for name in ["awready", "wready", "bvalid", "arready", "rvalid"]}
@@ -392,7 +392,7 @@ async def back_to_back_test(dut):
 
 @cocotb.test()
 async def read_backpressure_test(dut):
-    """The AXI master stalls RREADY - no read data may be lost."""
+    """The AXI manager stalls RREADY - no read data may be lost."""
     axi = await setup(dut)
     data = pattern(64, 11)
     await with_timeout(axi.write(0x0500, data))
@@ -408,7 +408,7 @@ async def read_backpressure_test(dut):
 
 @cocotb.test()
 async def write_backpressure_test(dut):
-    """The AXI master inserts WVALID gaps - the controller must not write stale data."""
+    """The AXI manager inserts WVALID gaps - the controller must not write stale data."""
     axi = await setup(dut)
     data = pattern(64, 12)
 
@@ -424,8 +424,8 @@ async def write_backpressure_test(dut):
 
 
 # --------------------------------------------------------------------------------------------------------------
-# Traffic of the SoC masters (chip-di-owas): all go through a verilog-axi crossbar, which sets the ID to
-# master ID | port << 4 and routes B / R back by ID. The crypto core uses verilog-axi axi_dma (read -> AES ->
+# Traffic of the DI-OWAS SoC managers: all go through a verilog-axi crossbar, which sets the ID to
+# manager ID | port << 4 and routes B / R back by ID. The crypto core uses verilog-axi axi_dma (read -> AES ->
 # write, bursts of up to 16 beats), and axi_dma_wr raises AWVALID of later bursts before it has the write data.
 
 
@@ -520,7 +520,7 @@ async def axi_id_test(dut):
 @cocotb.test()
 async def queued_bursts_with_stall_test(dut):
     """
-    Several bursts queued back to back while the master stalls RREADY / WVALID. The next address is accepted while
+    Several bursts queued back to back while the manager stalls RREADY / WVALID. The next address is accepted while
     the last beat of the previous burst still waits in the output register, that beat must keep its rlast
     (cocotbext-axi asserts on a missing rlast) and every burst its own data.
     """
@@ -563,7 +563,7 @@ async def queued_bursts_with_stall_test(dut):
 @cocotb.test()
 async def write_waits_for_later_read_test(dut):
     """
-    DMA copy with different source / destination alignment (chip-di-owas crypto DMA bypass): the source is read in
+    DMA copy with different source / destination alignment (DI-OWAS crypto DMA bypass): the source is read in
     two bursts (15 beats up to a 64 B boundary, then 1 beat), the destination is written in one 16-beat burst whose
     W data comes from the reads. When the first read is done, the AW (with W data) and the second AR are both
     pending; the write can only finish after the second read has returned its data.
@@ -618,7 +618,7 @@ async def write_waits_for_later_read_test(dut):
 @cocotb.test()
 async def read_waits_for_write_test(dut):
     """
-    Mirror case: a master with a small buffer (8 words) reads a 16-beat burst and holds RREADY low when its buffer
+    Mirror case: a manager with a small buffer (8 words) reads a 16-beat burst and holds RREADY low when its buffer
     is full, until it has written the buffered words out in a separate write burst.
     """
     axi = await setup(dut)
@@ -915,7 +915,7 @@ async def random_stall_test(dut, seed):
 async def latency_setup_test(dut):
     """
     Four chips share one clock and the controller samples at a fixed time, so the chips must run with fixed
-    read latency (MR0[5] = 1) - otherwise a refresh collision in one chip shifts its data (issue #27).
+    read latency (MR0[5] = 1) - otherwise a refresh collision in one chip shifts its data.
     """
     axi = await setup(dut)
     await with_timeout(axi.read(0x0, 4))
@@ -929,7 +929,7 @@ async def reset_during_read_test(dut):
     """
     A system reset in the middle of a read burst (async reset: CE# goes high right after a clock edge, while the
     memories still drive read data) must leave the memories usable: after the reset the controller re-initializes
-    them (MR0 write) and reads and writes work again. Found in the SoC simulation (chip-di-owas).
+    them (MR0 write) and reads and writes work again. Found in the DI-OWAS SoC simulation.
     """
     axi = await setup(dut)
     data = pattern(1024, 11)

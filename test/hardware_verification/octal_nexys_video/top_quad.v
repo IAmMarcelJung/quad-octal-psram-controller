@@ -3,8 +3,6 @@ module top_quad #(
     parameter ADDR_WIDTH = 32,
     parameter DATA_WIDTH = 32,
     parameter ID_WIDTH = 1,
-    parameter MAX_NUM_BYTES = $clog2(1024),
-    parameter INTERFACE_TYPE = "OSPI",
     parameter BUS_CLOCK_NEGEDGE = 1
 ) (
     input clk,
@@ -41,7 +39,7 @@ module top_quad #(
     assign set_vadj = volt33;
     assign vadj_en  = 1'b1;
 
-    wire [0 : 0] axi_awid;
+    wire [ID_WIDTH-1:0] axi_awid;
     wire [31 : 0] axi_awaddr;
     wire [7 : 0] axi_awlen;
     wire [2 : 0] axi_awsize;
@@ -57,11 +55,11 @@ module top_quad #(
     wire axi_wlast;
     wire axi_wvalid;
     wire axi_wready;
-    wire [0 : 0] axi_bid;
+    wire [ID_WIDTH-1:0] axi_bid;
     wire [1 : 0] axi_bresp;
     wire axi_bvalid;
     wire axi_bready;
-    wire [0 : 0] axi_arid;
+    wire [ID_WIDTH-1:0] axi_arid;
     wire [31 : 0] axi_araddr;
     wire [7 : 0] axi_arlen;
     wire [2 : 0] axi_arsize;
@@ -72,7 +70,7 @@ module top_quad #(
     wire [3 : 0] axi_arqos;
     wire axi_arvalid;
     wire axi_arready;
-    wire [0 : 0] axi_rid;
+    wire [ID_WIDTH-1:0] axi_rid;
     wire [31 : 0] axi_rdata;
     wire [1 : 0] axi_rresp;
     wire axi_rlast;
@@ -130,12 +128,18 @@ module top_quad #(
     assign sys_reset = reset_sync[1];
 
 
-    localparam INFINEON_CHIP = 1;
     localparam APMEMORY_CHIP = 2;
+
+    // the FMC PSRAM board has one clock pin for all four chips: use the clock of chip 0
+    wire [3:0] bus_clock;
+    wire [3:0] bus_clock_neg;
+    assign o_spi_bus_clock = bus_clock[0];
+    assign o_spi_bus_clock_neg = bus_clock_neg[0];
 
     OctalMemoryController_quad #(
         .ADDR_WIDTH(ADDR_WIDTH),
         .DATA_WIDTH(DATA_WIDTH),
+        .ID_WIDTH(ID_WIDTH),
         .CHIP_TYPE(APMEMORY_CHIP),
         .BUS_CLOCK_NEGEDGE(BUS_CLOCK_NEGEDGE)
     ) Controller (
@@ -143,8 +147,8 @@ module top_quad #(
         .rstn(~sys_reset),  // sys_reset is released synchronously
 
         // SPI Pins
-        .o_spi_bus_clock(o_spi_bus_clock),
-        .o_spi_bus_clock_neg(o_spi_bus_clock_neg),
+        .o_spi_bus_clock(bus_clock),
+        .o_spi_bus_clock_neg(bus_clock_neg),
         .o_spi_chip_select_neg({o_spi_d_chipselect_neg, 
                                 o_spi_c_chipselect_neg,
                                 o_spi_b_chipselect_neg,

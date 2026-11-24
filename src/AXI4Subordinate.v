@@ -201,14 +201,14 @@ module AXI4Subordinate #(
     assign s_axi_rlast = PIPELINE_OUTPUT ? s_axi_rlast_pipe_reg : s_axi_rlast_reg;
     assign s_axi_rvalid = PIPELINE_OUTPUT ? s_axi_rvalid_pipe_reg : s_axi_rvalid_reg;
 
-    // A burst is split into several memory transactions when the master stalls (WVALID low / RREADY low) or the
+    // A burst is split into several memory transactions when the manager stalls (WVALID low / RREADY low) or the
     // memory needs CE# high (tCEM). The controller then ends the memory transaction and goes idle while the AXI
     // burst is still running, it is restarted here at the address of the next beat.
     //
     // Read and write bursts are independent: while one burst is stalled and the memory is idle, the other direction
-    // may run a memory transaction (new burst or restart), then the stalled burst continues. A master may make its
+    // may run a memory transaction (new burst or restart), then the stalled burst continues. A manager may make its
     // write data depend on a read (DMA copy with different source and destination alignment) or its RREADY depend
-    // on a write (small buffer), so neither direction may block the other while it waits for the master.
+    // on a write (small buffer), so neither direction may block the other while it waits for the manager.
     //
     // One memory transaction at a time: a start is granted only while the memory is idle and no address ready is
     // raised (the ready is registered, the handshake follows in the next cycle and starts the transaction). If both
@@ -404,7 +404,7 @@ module AXI4Subordinate #(
             end
             READ_STATE_BURST: begin
                 if (read_word_ready & ~read_drop_reg & ~read_can_load) begin
-                    // master stalls: drop this word and the rest of the memory transaction, read again after a restart
+                    // manager stalls: drop this word and the rest of the memory transaction, read again after a restart
                     read_drop_next = 1'b1;
                     read_state_next = READ_STATE_BURST;
                 end else if (read_word_ready & ~read_drop_reg) begin

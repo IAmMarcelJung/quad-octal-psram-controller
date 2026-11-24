@@ -1,8 +1,10 @@
 # Quad Octal PSRAM Controller
-An AXI4 memory controller for four Octal SPI (xSPI) DDR PSRAMs in parallel, as used on the DI-OWAS chip.
+An AXI4 memory controller for four Octal SPI (xSPI) DDR PSRAMs in parallel, as used on the
+[DI-OWAS chip](https://github.com/DI-OWAS/chip-di-owas).
 
 This fork only keeps the quad Octal SPI controller. The other controllers (SPI, Quad SPI, Hyperbus, single
-Octal SPI) are in the upstream repository.
+Octal SPI) are in the upstream repository: https://github.com/timo-braungardt/QSPI_Memory_Controller
+("upstream issue #N" in the code refers to its issues).
 
 ## OWAS Files
 For the OWAS chip we want 4 Octal SPI controller in parallel.

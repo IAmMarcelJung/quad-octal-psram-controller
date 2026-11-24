@@ -1,7 +1,8 @@
 # Throughput of the quad APMemory controller (simulation)
 
-Measured 2026-10-31 in cocotb (Icarus) with `OctalMemoryController_quad`, `CHIP_TYPE = 2`, 4x APS12808L model,
-50 MHz system clock (25 MHz DDR bus clock), `CEM_MAX_CYCLES = 350` (7 us), fixed latency.
+Measured in cocotb (Icarus) with `OctalMemoryController_quad`, `CHIP_TYPE = 2`, 4x APS12808L model,
+50 MHz system clock (25 MHz DDR bus clock), `CEM_MAX_CYCLES = 350` (7 us at 50 MHz; the default derived from
+`CLK_FREQ_MIN_HZ` is 70), fixed latency.
 
 ## Method
 
@@ -9,7 +10,7 @@ Measured 2026-10-31 in cocotb (Icarus) with `OctalMemoryController_quad`, `CHIP_
   the last B response. The cocotbext-axi driver overhead is not included.
 - **single**: one burst on its own (latency of one access).
 - **8x**: 8 bursts queued back to back (sustained throughput, as a DMA issues them).
-- **30 % stall**: the master drops RREADY (reads) or WVALID (writes) in a random 30 % of the cycles.
+- **30 % stall**: the manager drops RREADY (reads) or WVALID (writes) in a random 30 % of the cycles.
 - Peak of the interface: 4 chips x 8 bit x 2 edges per bus clock = 1 word (4 B) per system clock = 200 MB/s.
 
 Reproduce:
@@ -63,18 +64,19 @@ THROUGHPUT=/tmp/throughput.txt pytest -q test_quad_octal_apmemory_model.py::test
   the controller handles one transaction at a time.
 - **Bursts longer than tCEM** (~350 cycles) are split into several memory transactions. This is already included
   in the 256 word rows.
-- **Master stalls are expensive.** Every RREADY / WVALID gap ends the memory transaction, and the restart costs the
+- **Manager stalls are expensive.** Every RREADY / WVALID gap ends the memory transaction, and the restart costs the
   full fixed cost again. With 30 % random stalls the throughput drops to ~17 MB/s (read) / ~34 MB/s (write),
-  almost independent of the burst length. A small skid buffer would absorb short stalls (open item R3 in
-  QUICKSTART.md). Decision postponed until the real stall behaviour of the SoC masters (DC camera, crypto DMA)
-  has been measured in chip-di-owas.
+  almost independent of the burst length. For reads, the optional read data FIFO (`R_FIFO_DEPTH`) absorbs these
+  stalls.
 - Single beat rows with stall equal the rows without: a one-beat burst has no gap the stall could fall into.
-- 30 % random single-cycle stalls are a harsh pattern. Real masters usually stall in longer, rarer stretches
+- 30 % random single-cycle stalls are a harsh pattern. Real managers usually stall in longer, rarer stretches
   (FIFO full), which costs less per stalled cycle.
 
-## Typical SoC masters
+## Typical SoC managers
 
-| Master | Access | Expected (no stalls) |
+AXI managers of the [DI-OWAS SoC](https://github.com/DI-OWAS/chip-di-owas) (the SoC still uses the former AXI term master):
+
+| Manager | Access | Expected (no stalls) |
 |---|---|---|
 | CPU | single beat, 4 B | ~6 MB/s read, ~8 MB/s write (33 / 24 cycles per access) |
 | Crypto DMA | INCR, up to 16 beats | ~62 MB/s read, ~84 MB/s write |
