@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 proc write_data {address length data} {
     create_hw_axi_txn write_txn [get_hw_axis hw_axi_1] -type write -address $address -len $length -data $data -force
     run_hw_axi [get_hw_axi_txns write_txn]

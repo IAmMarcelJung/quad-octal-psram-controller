@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 `timescale 1ps / 1ps
 /*
 OctalSPI

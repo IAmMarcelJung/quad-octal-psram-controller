@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 One AXI scenario that runs on the Nexys Video (JTAG-AXI) and in the cocotb simulation with the APS12808L model,
 so the model can be checked against the real chips.

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # PSRAM interface constraints: OctalMemoryController_quad (CHIP_TYPE = 2,
 # BUS_CLOCK_NEGEDGE = 1) with four AP Memory APS12808L-3OBM-BA (133 MHz, -7).
 # Source from the toplevel SDC after sys_clk has been created.

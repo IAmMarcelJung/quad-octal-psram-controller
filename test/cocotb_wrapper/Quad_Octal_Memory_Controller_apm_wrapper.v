@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 `timescale 1ps / 1ps
 
 module Quad_Octal_Memory_Controller_apm_wrapper #(

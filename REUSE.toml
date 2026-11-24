@@ -1,0 +1,16 @@
+version = 1
+
+# Default for all files: the license comes from the file's own SPDX-License-Identifier line
+# (Apache-2.0 for files without one), the copyright from here.
+[[annotations]]
+path = "**"
+precedence = "closest"
+SPDX-FileCopyrightText = ["2026 Timo Braungardt", "2026 DI-OWAS team"]
+SPDX-License-Identifier = "Apache-2.0"
+
+# Based on the Digilent Nexys Video master XDC (MIT); the last matching annotation wins
+[[annotations]]
+path = "test/hardware_verification/octal_nexys_video/Nexys-Video-Master*.xdc"
+precedence = "closest"
+SPDX-FileCopyrightText = ["Digilent", "2026 Timo Braungardt", "2026 DI-OWAS team"]
+SPDX-License-Identifier = "MIT"

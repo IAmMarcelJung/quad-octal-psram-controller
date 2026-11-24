@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 from .SpiFlashMemory import SpiFlashMemory
 from .QSpiFlashMemory import QSpiFlashMemory
 from .HyperbusRam import HyperbusRam

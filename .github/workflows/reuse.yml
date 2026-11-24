@@ -1,0 +1,14 @@
+name: REUSE
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  reuse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: REUSE compliance (license and copyright of every file)
+        uses: fsfe/reuse-action@v5

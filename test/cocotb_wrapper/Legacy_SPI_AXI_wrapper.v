@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 `timescale 1ns / 100ps
 
 // Legacy MemoryController (INTERFACE_TYPE = "SPI") without a memory model, for AXIInterface checks that do not

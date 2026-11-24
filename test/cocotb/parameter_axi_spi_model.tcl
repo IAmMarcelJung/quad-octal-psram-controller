@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 log -r /*;
 add wave sim:/AXI_SPI_wrapper/clk;
 add wave sim:/AXI_SPI_wrapper/Memory/PoweredUp;

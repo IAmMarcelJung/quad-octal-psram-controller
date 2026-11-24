@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 import logging
 import cocotb
 from cocotbext.spi import SpiSlaveBase, SpiBus, SpiConfig
