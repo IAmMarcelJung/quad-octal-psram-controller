@@ -21,7 +21,9 @@ module Quad_Octal_Memory_Controller_apm_wrapper #(
     parameter integer CEM_MAX_CYCLES = CLK_FREQ_MIN_HZ / 1000 * 7 / 1000,  // same default as the controller
     parameter BUS_CLOCK_NEGEDGE = 1,
     // test only: R channel FIFO between controller and master (0 = direct), to estimate what a skid buffer would gain
-    parameter integer R_FIFO_DEPTH = 0
+    parameter integer R_FIFO_DEPTH = 0,
+    // R FIFO inside the controller (OctalMemoryController_quad R_FIFO_DEPTH, 0 = none)
+    parameter integer CTRL_R_FIFO_DEPTH = 0
 ) (
     input clk,
     input reset,
@@ -151,7 +153,8 @@ module Quad_Octal_Memory_Controller_apm_wrapper #(
         .MEMORY_RESET_CYCLES(20000),  // 400 us, the model needs no supply ramp
         .CLK_FREQ_MIN_HZ(CLK_FREQ_MIN_HZ),
         .CEM_MAX_CYCLES(CEM_MAX_CYCLES),
-        .BUS_CLOCK_NEGEDGE(BUS_CLOCK_NEGEDGE)
+        .BUS_CLOCK_NEGEDGE(BUS_CLOCK_NEGEDGE),
+        .R_FIFO_DEPTH(CTRL_R_FIFO_DEPTH)
     ) Controller (
         .clk (clk),
         .rstn(~reset),

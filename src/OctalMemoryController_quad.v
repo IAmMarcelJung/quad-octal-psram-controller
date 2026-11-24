@@ -17,7 +17,10 @@ module OctalMemoryController_quad #(
     parameter integer CLK_FREQ_MIN_HZ = 10_000_000,  // lowest clk frequency (slower clock for timing problems / tests)
     parameter integer MEMORY_RESET_CYCLES = (CLK_FREQ_HZ + 49) / 50,  // RESET# low time of the memories (20 ms)
     parameter integer CEM_MAX_CYCLES = CLK_FREQ_MIN_HZ / 1000 * 7 / 1000,  // longest CE# low time (7 us, tCEM 8 us)
-    parameter BUS_CLOCK_NEGEDGE = 1  // 1: bus clock from a negedge register, centre aligned data; 0: edge aligned (see OctalSPI_quad)
+    parameter BUS_CLOCK_NEGEDGE = 1,  // 1: bus clock from a negedge register, centre aligned data; 0: edge aligned (see OctalSPI_quad)
+    // R channel FIFO (0 = none). Absorbs RREADY stalls of slow masters so a burst does not have to be split
+    // (every split costs a new CE# command + latency). 16 = one 16-beat burst. 0 or >= 2.
+    parameter integer R_FIFO_DEPTH = 0
 ) (
     input clk,
     input rstn,  // active low, asynchronous assert, synchronous release (SoC: resetn_async)
@@ -88,6 +91,60 @@ module OctalMemoryController_quad #(
     wire axi_write_data_valid;
     wire axi_last_word;
     wire axi_start_transaction;
+
+    // R channel between AXIInterface and the (optional) R FIFO
+    wire [  ID_WIDTH-1:0] ctrl_rid;
+    wire [DATA_WIDTH-1:0] ctrl_rdata;
+    wire [           1:0] ctrl_rresp;
+    wire                  ctrl_rlast;
+    wire                  ctrl_rvalid;
+    wire                  ctrl_rready;
+
+    generate
+        if (R_FIFO_DEPTH == 0) begin : gen_r_direct
+            assign s_axi_rid = ctrl_rid;
+            assign s_axi_rdata = ctrl_rdata;
+            assign s_axi_rresp = ctrl_rresp;
+            assign s_axi_rlast = ctrl_rlast;
+            assign s_axi_rvalid = ctrl_rvalid;
+            assign ctrl_rready = s_axi_rready;
+        end else begin : gen_r_fifo
+            localparam integer RW = ID_WIDTH + DATA_WIDTH + 3;
+            localparam integer PW = $clog2(R_FIFO_DEPTH) + 1;
+            localparam integer LAST = R_FIFO_DEPTH - 1;
+            localparam [PW-1:0] FIFO_DEPTH = R_FIFO_DEPTH[PW-1:0];
+            localparam [PW-2:0] LAST_PTR = LAST[PW-2:0];
+            reg  [RW-1:0] r_fifo_mem[0:R_FIFO_DEPTH-1];
+            reg  [PW-1:0] r_fifo_count;
+            reg  [PW-2:0] r_fifo_wr_ptr;
+            reg  [PW-2:0] r_fifo_rd_ptr;
+            wire          r_fifo_push = ctrl_rvalid & ctrl_rready;
+            wire          r_fifo_pop = s_axi_rvalid & s_axi_rready;
+            assign ctrl_rready  = (r_fifo_count < FIFO_DEPTH);
+            assign s_axi_rvalid = (r_fifo_count != 0);
+            wire [ID_WIDTH-1:0] r_fifo_out_id;
+            wire                r_fifo_out_last;
+            assign {r_fifo_out_id, s_axi_rdata, s_axi_rresp, r_fifo_out_last} = r_fifo_mem[r_fifo_rd_ptr];
+            // RID/RLAST forced to 0 while empty: the FIFO RAM has no reset (X in sim/GLS), and the verilog-axi
+            // crossbar routes R by RID even when RVALID is low (axi_crossbar_rd.v r_select) -> X on all R requests.
+            assign s_axi_rid  = s_axi_rvalid ? r_fifo_out_id : {ID_WIDTH{1'b0}};
+            assign s_axi_rlast = s_axi_rvalid & r_fifo_out_last;
+            always @(posedge clk) begin
+                if (r_fifo_push) r_fifo_mem[r_fifo_wr_ptr] <= {ctrl_rid, ctrl_rdata, ctrl_rresp, ctrl_rlast};
+            end
+            always @(posedge clk or negedge rstn) begin
+                if (!rstn) begin
+                    r_fifo_count  <= {PW{1'b0}};
+                    r_fifo_wr_ptr <= {(PW - 1) {1'b0}};
+                    r_fifo_rd_ptr <= {(PW - 1) {1'b0}};
+                end else begin
+                    if (r_fifo_push) r_fifo_wr_ptr <= (r_fifo_wr_ptr == LAST_PTR) ? {(PW - 1) {1'b0}} : r_fifo_wr_ptr + 1'b1;
+                    if (r_fifo_pop) r_fifo_rd_ptr <= (r_fifo_rd_ptr == LAST_PTR) ? {(PW - 1) {1'b0}} : r_fifo_rd_ptr + 1'b1;
+                    r_fifo_count <= r_fifo_count + {{(PW - 1) {1'b0}}, r_fifo_push} - {{(PW - 1) {1'b0}}, r_fifo_pop};
+                end
+            end
+        end
+    endgenerate
 
 
     OSPIController_quad #(
@@ -180,12 +237,12 @@ module OctalMemoryController_quad #(
         .s_axi_arprot(s_axi_arprot),
         .s_axi_arvalid(s_axi_arvalid),
         .s_axi_arready(s_axi_arready),
-        .s_axi_rid(s_axi_rid),
-        .s_axi_rdata(s_axi_rdata),
-        .s_axi_rresp(s_axi_rresp),
-        .s_axi_rlast(s_axi_rlast),
-        .s_axi_rvalid(s_axi_rvalid),
-        .s_axi_rready(s_axi_rready)
+        .s_axi_rid(ctrl_rid),
+        .s_axi_rdata(ctrl_rdata),
+        .s_axi_rresp(ctrl_rresp),
+        .s_axi_rlast(ctrl_rlast),
+        .s_axi_rvalid(ctrl_rvalid),
+        .s_axi_rready(ctrl_rready)
     );
 
 

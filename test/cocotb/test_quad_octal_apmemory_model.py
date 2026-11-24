@@ -967,7 +967,7 @@ async def reset_during_read_test(dut):
 
 # --------------------------------------------------------------------------------------------------------------
 def run(test_filter=None, pushout=0, wave=False, init_byte=-1, cem_max_cycles=None, bus_clock_negedge=1, r_fifo_depth=0, build_suffix="",
-        clk_period_ns=20):
+        clk_period_ns=20, ctrl_r_fifo_depth=0):
     """cem_max_cycles=None keeps the controller default (derived from CLK_FREQ_MIN_HZ)."""
     proj_path = Path(__file__).resolve().parent
     sources = [
@@ -989,6 +989,8 @@ def run(test_filter=None, pushout=0, wave=False, init_byte=-1, cem_max_cycles=No
         "BUS_CLOCK_NEGEDGE": bus_clock_negedge,
         "R_FIFO_DEPTH": r_fifo_depth,
     }
+    if ctrl_r_fifo_depth:
+        parameters["CTRL_R_FIFO_DEPTH"] = ctrl_r_fifo_depth
     if cem_max_cycles is not None:
         parameters["CEM_MAX_CYCLES"] = cem_max_cycles
     sim = os.getenv("SIM", "icarus")
@@ -996,6 +998,8 @@ def run(test_filter=None, pushout=0, wave=False, init_byte=-1, cem_max_cycles=No
     build_dir = proj_path / f"sim_build_apmemory_{pushout}_{init_byte}_{cem_max_cycles or 'def'}_{bus_clock_negedge}_{r_fifo_depth}{build_suffix}"
     if clk_period_ns != 20:
         build_dir = build_dir.with_name(build_dir.name + f"_{clk_period_ns}ns")
+    if ctrl_r_fifo_depth:
+        build_dir = build_dir.with_name(build_dir.name + f"_cr{ctrl_r_fifo_depth}")
     runner.build(
         sources=sources,
         hdl_toplevel="Quad_Octal_Memory_Controller_apm_wrapper",
@@ -1044,6 +1048,22 @@ def test_quad_octal_apmemory_model_short_cem():
         "|random_stall_test|read_backpressure_test|write_backpressure_test|dma_copy_test|mixed_masters_test"
         "|queued_bursts_with_stall_test|write_waits_for_later_read_test|read_waits_for_write_test",
         cem_max_cycles=60,
+    )
+
+
+def test_quad_octal_apmemory_model_ctrl_r_fifo():
+    """All tests with the R FIFO inside the controller (R_FIFO_DEPTH = 16)."""
+    run(test_filter=os.getenv("TEST_FILTER"), ctrl_r_fifo_depth=16)
+
+
+def test_quad_octal_apmemory_model_ctrl_r_fifo_short_cem():
+    """Data tests with the controller R FIFO and a 60-cycle CE# limit (bursts split by tCEM while the FIFO fills)."""
+    run(
+        test_filter="write_read_roundtrip_test|unaligned_word_test|single_word_consistency_test|byte_strobe_test"
+        "|random_stall_test|read_backpressure_test|write_backpressure_test|dma_copy_test|mixed_masters_test"
+        "|queued_bursts_with_stall_test|write_waits_for_later_read_test|read_waits_for_write_test",
+        cem_max_cycles=60,
+        ctrl_r_fifo_depth=16,
     )
 
 
