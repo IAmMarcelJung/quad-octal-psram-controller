@@ -1,4 +1,4 @@
-QSPI Memory Controller
+Quad Octal PSRAM Controller (fork of QSPI Memory Controller by Timo Braungardt)
 Copyright (c) 2026 Timo Braungardt
 Copyright (c) 2026 DI-OWAS team (contributions by Marcel Jung)
 
