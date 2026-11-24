@@ -4,7 +4,7 @@
 #   vivado -mode batch -source build_quad.tcl                 -> build/top_quad.bit
 #   vivado -mode batch -source build_quad.tcl -tclargs program -> build and program the board
 #
-# The JTAG-AXI master is then used with axi_verification_test.tcl / hw_test_quad.tcl.
+# The JTAG-AXI master is then used with stress_test.tcl / retention_test.tcl / run_hw_scenario.tcl.
 
 set script_dir [file dirname [file normalize [info script]]]
 set repo_dir [file normalize $script_dir/../../..]
