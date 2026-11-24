@@ -16,3 +16,13 @@ groups:
       - src/OSPIController_quad.v
       - src/OctalSPI_quad.v
       - src/AXIInterface.v
+  # Read data FIFO enabled (not the tapeout setting, which keeps R_FIFO_DEPTH = 0), so the FIFO code is linted too
+  - top: OctalMemoryController_quad
+    params:
+      - CHIP_TYPE=2
+      - R_FIFO_DEPTH=16
+    files:
+      - src/OctalMemoryController_quad.v
+      - src/OSPIController_quad.v
+      - src/OctalSPI_quad.v
+      - src/AXIInterface.v

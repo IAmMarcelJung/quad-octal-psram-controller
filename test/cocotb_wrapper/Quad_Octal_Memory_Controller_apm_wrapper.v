@@ -20,8 +20,7 @@ module Quad_Octal_Memory_Controller_apm_wrapper #(
     parameter integer CLK_FREQ_MIN_HZ = 10_000_000,
     parameter integer CEM_MAX_CYCLES = CLK_FREQ_MIN_HZ / 1000 * 7 / 1000,  // same default as the controller
     parameter BUS_CLOCK_NEGEDGE = 1,
-    // test only: R channel FIFO between controller and master (0 = direct), to estimate what a skid buffer would gain
-    parameter integer R_FIFO_DEPTH = 0
+    parameter integer R_FIFO_DEPTH = 0  // read data FIFO of the controller (0 = none)
 ) (
     input clk,
     input reset,
@@ -101,49 +100,6 @@ module Quad_Octal_Memory_Controller_apm_wrapper #(
     localparam INFINEON_CHIP = 1;
     localparam APMEMORY_CHIP = 2;
 
-    // R channel between the controller and the (optional) FIFO
-    wire [  ID_WIDTH-1:0] ctrl_rid;
-    wire [DATA_WIDTH-1:0] ctrl_rdata;
-    wire [           1:0] ctrl_rresp;
-    wire                  ctrl_rlast;
-    wire                  ctrl_rvalid;
-    wire                  ctrl_rready;
-
-    generate
-        if (R_FIFO_DEPTH == 0) begin : gen_r_direct
-            assign s_axi_rid = ctrl_rid;
-            assign s_axi_rdata = ctrl_rdata;
-            assign s_axi_rresp = ctrl_rresp;
-            assign s_axi_rlast = ctrl_rlast;
-            assign s_axi_rvalid = ctrl_rvalid;
-            assign ctrl_rready = s_axi_rready;
-        end else begin : gen_r_fifo
-            localparam integer W  = ID_WIDTH + DATA_WIDTH + 3;
-            localparam integer PW = $clog2(R_FIFO_DEPTH) + 1;
-            reg [ W-1:0] fifo_mem[0:R_FIFO_DEPTH-1];
-            reg [PW-1:0] count;
-            reg [PW-2:0] wr_ptr, rd_ptr;
-            wire push = ctrl_rvalid & ctrl_rready;
-            wire pop = s_axi_rvalid & s_axi_rready;
-            assign ctrl_rready = (count < R_FIFO_DEPTH);
-            assign s_axi_rvalid = (count != 0);
-            assign {s_axi_rid, s_axi_rdata, s_axi_rresp, s_axi_rlast} = fifo_mem[rd_ptr];
-            always @(posedge clk) begin
-                if (push) begin
-                    fifo_mem[wr_ptr] <= {ctrl_rid, ctrl_rdata, ctrl_rresp, ctrl_rlast};
-                    wr_ptr <= (wr_ptr == R_FIFO_DEPTH - 1) ? 0 : wr_ptr + 1;
-                end
-                if (pop) rd_ptr <= (rd_ptr == R_FIFO_DEPTH - 1) ? 0 : rd_ptr + 1;
-                count <= count + push - pop;
-                if (reset) begin
-                    count  <= 0;
-                    wr_ptr <= 0;
-                    rd_ptr <= 0;
-                end
-            end
-        end
-    endgenerate
-
     OctalMemoryController_quad #(
         .ADDR_WIDTH(ADDR_WIDTH),
         .DATA_WIDTH(DATA_WIDTH),
@@ -151,7 +107,8 @@ module Quad_Octal_Memory_Controller_apm_wrapper #(
         .MEMORY_RESET_CYCLES(20000),  // 400 us, the model needs no supply ramp
         .CLK_FREQ_MIN_HZ(CLK_FREQ_MIN_HZ),
         .CEM_MAX_CYCLES(CEM_MAX_CYCLES),
-        .BUS_CLOCK_NEGEDGE(BUS_CLOCK_NEGEDGE)
+        .BUS_CLOCK_NEGEDGE(BUS_CLOCK_NEGEDGE),
+        .R_FIFO_DEPTH(R_FIFO_DEPTH)
     ) Controller (
         .clk (clk),
         .rstn(~reset),
@@ -201,12 +158,12 @@ module Quad_Octal_Memory_Controller_apm_wrapper #(
         .s_axi_arprot(s_axi_arprot),
         .s_axi_arvalid(s_axi_arvalid),
         .s_axi_arready(s_axi_arready),
-        .s_axi_rid(ctrl_rid),
-        .s_axi_rdata(ctrl_rdata),
-        .s_axi_rresp(ctrl_rresp),
-        .s_axi_rlast(ctrl_rlast),
-        .s_axi_rvalid(ctrl_rvalid),
-        .s_axi_rready(ctrl_rready)
+        .s_axi_rid(s_axi_rid),
+        .s_axi_rdata(s_axi_rdata),
+        .s_axi_rresp(s_axi_rresp),
+        .s_axi_rlast(s_axi_rlast),
+        .s_axi_rvalid(s_axi_rvalid),
+        .s_axi_rready(s_axi_rready)
     );
 
 
