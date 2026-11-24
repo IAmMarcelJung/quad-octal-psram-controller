@@ -9,7 +9,7 @@ For the OWAS chip we want 4 Octal SPI controller in parallel.
 For that implementation use these files:
 ```
 ./src/OctalMemoryController_quad.v",
-./src/AXIInterface.v",
+./src/AXI4Subordinate.v",
 ./src/OSPIController_quad.v",
 ./src/OctalSPI_quad.v",
 ```

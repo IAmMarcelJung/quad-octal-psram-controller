@@ -39,13 +39,13 @@ generate_target all [get_ips]
 synth_ip [get_ips]
 
 # sources
-# AXIInterface.v last: it sets `default_nettype none without resetting it afterwards
+# AXI4Subordinate.v last: it sets `default_nettype none without resetting it afterwards
 read_verilog [list \
     $repo_dir/src/OctalSPI_quad.v \
     $repo_dir/src/OSPIController_quad.v \
     $repo_dir/src/OctalMemoryController_quad.v \
     $script_dir/top_quad.v \
-    $repo_dir/src/AXIInterface.v \
+    $repo_dir/src/AXI4Subordinate.v \
 ]
 
 read_xdc $script_dir/Nexys-Video-Master_Quad.xdc

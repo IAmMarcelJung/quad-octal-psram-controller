@@ -91,7 +91,7 @@ module OctalMemoryController_quad #(
     wire axi_last_word;
     wire axi_start_transaction;
 
-    // R channel between AXIInterface and the optional read data FIFO
+    // R channel between AXI4Subordinate and the optional read data FIFO
     wire [  ID_WIDTH-1:0] ctrl_rid;
     wire [DATA_WIDTH-1:0] ctrl_rdata;
     wire [           1:0] ctrl_rresp;
@@ -185,12 +185,12 @@ module OctalMemoryController_quad #(
     );
 
 
-    AXIInterface #(
+    AXI4Subordinate #(
         .DATA_WIDTH(DATA_WIDTH),
         .ADDR_WIDTH(ADDR_WIDTH),
         .ID_WIDTH  (ID_WIDTH),
         .STRB_WIDTH(STRB_WIDTH)
-    ) AXI_Interface (
+    ) AXI4_Subordinate (
         .clk(clk),
         .rst_neg(rstn),
 

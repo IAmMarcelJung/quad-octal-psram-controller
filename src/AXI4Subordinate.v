@@ -33,7 +33,7 @@ Can create backpreasure so the SPI can write the data out.
 `timescale 1ns / 1ps
 `default_nettype none
 
-module AXIInterface #(
+module AXI4Subordinate #(
     // Width of data bus in bits
     parameter DATA_WIDTH = 32,
     // Width of address bus in bits
@@ -507,5 +507,5 @@ module AXIInterface #(
 
 endmodule
 
-// AXIInterface sets `default_nettype none, restore the default for the files read after this one
+// AXI4Subordinate sets `default_nettype none, restore the default for the files read after this one
 `default_nettype wire
