@@ -17,7 +17,9 @@ module OctalMemoryController_quad #(
     parameter integer CLK_FREQ_MIN_HZ = 10_000_000,  // lowest clk frequency (slower clock for timing problems / tests)
     parameter integer MEMORY_RESET_CYCLES = (CLK_FREQ_HZ + 49) / 50,  // RESET# low time of the memories (20 ms)
     parameter integer CEM_MAX_CYCLES = CLK_FREQ_MIN_HZ / 1000 * 7 / 1000,  // longest CE# low time (7 us, tCEM 8 us)
-    parameter BUS_CLOCK_NEGEDGE = 1  // 1: bus clock from a negedge register, centre aligned data; 0: edge aligned (see OctalSPI_quad)
+    parameter BUS_CLOCK_NEGEDGE = 1,  // 1: bus clock from a negedge register, centre aligned data; 0: edge aligned (see OctalSPI_quad)
+    // read data FIFO: 0 = none, else a power of 2 (>= 2); RREADY stalls then no longer split the memory burst
+    parameter integer R_FIFO_DEPTH = 0
 ) (
     input clk,
     input rstn,  // active low, asynchronous assert, synchronous release (SoC: resetn_async)
@@ -88,6 +90,60 @@ module OctalMemoryController_quad #(
     wire axi_write_data_valid;
     wire axi_last_word;
     wire axi_start_transaction;
+
+    // R channel between AXIInterface and the optional read data FIFO
+    wire [  ID_WIDTH-1:0] ctrl_rid;
+    wire [DATA_WIDTH-1:0] ctrl_rdata;
+    wire [           1:0] ctrl_rresp;
+    wire                  ctrl_rlast;
+    wire                  ctrl_rvalid;
+    wire                  ctrl_rready;
+
+    /* verilator lint_off MODMISSING */
+    generate
+        if (R_FIFO_DEPTH == 0) begin : gen_r_direct
+            assign s_axi_rid = ctrl_rid;
+            assign s_axi_rdata = ctrl_rdata;
+            assign s_axi_rresp = ctrl_rresp;
+            assign s_axi_rlast = ctrl_rlast;
+            assign s_axi_rvalid = ctrl_rvalid;
+            assign ctrl_rready = s_axi_rready;
+        end else if (R_FIFO_DEPTH < 2 || (R_FIFO_DEPTH & (R_FIFO_DEPTH - 1)) != 0) begin : gen_r_fifo_depth_check
+            R_FIFO_DEPTH_must_be_0_or_a_power_of_2 illegal_instance ();
+        end else begin : gen_r_fifo
+            localparam integer RW = ID_WIDTH + DATA_WIDTH + 3;  // entry: id, data, resp, last
+            localparam integer AW = $clog2(R_FIFO_DEPTH);
+            reg  [      RW-1:0] r_fifo_mem      [0:R_FIFO_DEPTH-1];
+            reg  [        AW:0] r_fifo_count;
+            reg  [      AW-1:0] r_fifo_wr_ptr;
+            reg  [      AW-1:0] r_fifo_rd_ptr;
+            wire [ID_WIDTH-1:0] r_fifo_out_id;
+            wire                r_fifo_out_last;
+            wire                r_fifo_push = ctrl_rvalid & ctrl_rready;
+            wire                r_fifo_pop = s_axi_rvalid & s_axi_rready;
+            assign ctrl_rready  = ~r_fifo_count[AW];  // not full
+            assign s_axi_rvalid = (r_fifo_count != 0);
+            assign {r_fifo_out_id, s_axi_rdata, s_axi_rresp, r_fifo_out_last} = r_fifo_mem[r_fifo_rd_ptr];
+            // RID/RLAST are 0 while empty: the FIFO RAM has no reset and interconnects may route R by RID with RVALID low
+            assign s_axi_rid   = s_axi_rvalid ? r_fifo_out_id : {ID_WIDTH{1'b0}};
+            assign s_axi_rlast = s_axi_rvalid & r_fifo_out_last;
+            always @(posedge clk) begin
+                if (r_fifo_push) r_fifo_mem[r_fifo_wr_ptr] <= {ctrl_rid, ctrl_rdata, ctrl_rresp, ctrl_rlast};
+            end
+            always @(posedge clk or negedge rstn) begin
+                if (!rstn) begin
+                    r_fifo_count  <= {(AW + 1) {1'b0}};
+                    r_fifo_wr_ptr <= {AW{1'b0}};
+                    r_fifo_rd_ptr <= {AW{1'b0}};
+                end else begin
+                    if (r_fifo_push) r_fifo_wr_ptr <= r_fifo_wr_ptr + 1'b1;
+                    if (r_fifo_pop) r_fifo_rd_ptr <= r_fifo_rd_ptr + 1'b1;
+                    r_fifo_count <= r_fifo_count + {{AW{1'b0}}, r_fifo_push} - {{AW{1'b0}}, r_fifo_pop};
+                end
+            end
+        end
+    endgenerate
+    /* verilator lint_on MODMISSING */
 
 
     OSPIController_quad #(
@@ -180,12 +236,12 @@ module OctalMemoryController_quad #(
         .s_axi_arprot(s_axi_arprot),
         .s_axi_arvalid(s_axi_arvalid),
         .s_axi_arready(s_axi_arready),
-        .s_axi_rid(s_axi_rid),
-        .s_axi_rdata(s_axi_rdata),
-        .s_axi_rresp(s_axi_rresp),
-        .s_axi_rlast(s_axi_rlast),
-        .s_axi_rvalid(s_axi_rvalid),
-        .s_axi_rready(s_axi_rready)
+        .s_axi_rid(ctrl_rid),
+        .s_axi_rdata(ctrl_rdata),
+        .s_axi_rresp(ctrl_rresp),
+        .s_axi_rlast(ctrl_rlast),
+        .s_axi_rvalid(ctrl_rvalid),
+        .s_axi_rready(ctrl_rready)
     );
 
 

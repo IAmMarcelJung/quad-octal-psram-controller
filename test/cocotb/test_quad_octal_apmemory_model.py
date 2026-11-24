@@ -1047,6 +1047,22 @@ def test_quad_octal_apmemory_model_short_cem():
     )
 
 
+def test_quad_octal_apmemory_model_r_fifo():
+    """All tests with the read data FIFO (R_FIFO_DEPTH = 16)."""
+    run(test_filter=os.getenv("TEST_FILTER"), r_fifo_depth=16)
+
+
+def test_quad_octal_apmemory_model_r_fifo_short_cem():
+    """Data tests with the read data FIFO and a 60-cycle CE# limit (bursts split by tCEM while the FIFO fills)."""
+    run(
+        test_filter="write_read_roundtrip_test|unaligned_word_test|single_word_consistency_test|byte_strobe_test"
+        "|random_stall_test|read_backpressure_test|write_backpressure_test|dma_copy_test|mixed_masters_test"
+        "|queued_bursts_with_stall_test|write_waits_for_later_read_test|read_waits_for_write_test",
+        cem_max_cycles=60,
+        r_fifo_depth=16,
+    )
+
+
 def test_quad_octal_apmemory_model_hw_scenario():
     """Run the board scenario, writes the reads to $HW_SCENARIO (skipped if not set)."""
     if os.getenv("HW_SCENARIO"):
@@ -1057,17 +1073,6 @@ def test_quad_octal_apmemory_model_throughput():
     """Measure cycles per burst, writes a table to $THROUGHPUT (skipped if not set)."""
     if os.getenv("THROUGHPUT"):
         run(test_filter="throughput_test")
-
-
-def test_quad_octal_apmemory_model_buffer_estimate():
-    """
-    Read stall patterns with a testbench R FIFO of several depths in front of the controller, to estimate what a
-    skid buffer would gain. Appends a table to $BUFFER_ESTIMATE (skipped if not set).
-    """
-    if os.getenv("BUFFER_ESTIMATE"):
-        for depth in [0, 2, 4, 8, 32]:
-            os.environ["BUFFER_DEPTH"] = str(depth)
-            run(test_filter="buffer_estimate_test", r_fifo_depth=depth)
 
 
 def test_quad_octal_apmemory_model_sustained():
@@ -1277,148 +1282,6 @@ async def sustained_test(dut):
     with open(os.environ["SUSTAINED"], "a") as f:
         f.write("\n".join(lines) + "\n")
     check_no_model_errors(dut, before)
-
-
-@cocotb.test(skip=os.getenv("BUFFER_ESTIMATE") is None)
-async def buffer_estimate_test(dut):
-    """
-    Read 1 KB with different RREADY patterns, measured from the first AR handshake to the last R beat.
-    The R FIFO depth (testbench, R_FIFO_DEPTH) stands for a skid buffer in the controller.
-    """
-    axi = await setup(dut)
-    depth = int(os.environ["BUFFER_DEPTH"])
-    await with_timeout(axi.write(0, bytes(0x2000)))
-    await wait_idle(dut)
-
-    def crypto_consumer(block_busy=165):
-        # chip-di-owas crypto path: axi_dma_rd output register (2 words) -> aesStreamAdapter gathers 4 words
-        # -> AES128 round based core, 161 cycles per block (+ ~4 cycles to scatter the result).
-        # Bypass (CTRL.BYPASS): gather 4 words, then scatter them in 4 cycles (block_busy=4).
-        skid = 0
-        gathered = 0
-        busy = 0
-        while True:
-            if dut.s_axi_rvalid.value == 1 and dut.s_axi_rready.value == 1:
-                skid += 1
-            if busy > 0:
-                busy -= 1
-            elif skid > 0:
-                skid -= 1
-                gathered += 1
-                if gathered == 4:
-                    gathered = 0
-                    busy = block_busy
-            yield skid >= 2  # pause = RREADY low
-
-    def short_stalls(rnd):
-        # generic: in 10 % of the cycles a stall of 1..3 cycles starts (arbitration, FIFO almost full)
-        while True:
-            if rnd.random() < 0.1:
-                for _ in range(rnd.randint(1, 3)):
-                    yield True
-            else:
-                yield False
-
-    def random30(rnd):
-        while True:
-            yield rnd.random() < 0.3
-
-    patterns = [
-        ("none", 16, None),
-        ("crypto DMA (AES 161 cyc/block)", 16, crypto_consumer),
-        ("crypto DMA bypass", 16, lambda: crypto_consumer(4)),
-        ("short stalls 10 % x 1-3 cyc", 16, lambda: short_stalls(random.Random(3))),
-        ("short stalls 10 % x 1-3 cyc", 64, lambda: short_stalls(random.Random(3))),
-        ("random 30 % single cycles", 16, lambda: random30(random.Random(4))),
-        ("random 30 % single cycles", 64, lambda: random30(random.Random(4))),
-    ]
-    total = 1024
-    lines = []
-    for name, burst, gen in patterns:
-        axi.read_if.max_burst_len = burst
-        first = None
-        last = None
-        restarts = 0
-        done = False
-
-        async def monitor():
-            nonlocal first, last, restarts
-            cycle = 0
-            ai = dut.Controller.AXI_Interface
-            while not done:
-                await RisingEdge(dut.clk)
-                cycle += 1
-                if first is None and dut.s_axi_arvalid.value == 1 and dut.s_axi_arready.value == 1:
-                    first = cycle
-                if dut.s_axi_rvalid.value == 1 and dut.s_axi_rready.value == 1 and dut.s_axi_rlast.value == 1:
-                    last = cycle
-                if ai.restart_read.value == 1:
-                    restarts += 1
-
-        if gen:
-            axi.read_if.r_channel.set_pause_generator(gen())
-        mon = cocotb.start_soon(monitor())
-        result = await with_timeout(axi.read(0, total), timeout_us=20000)
-        assert result.data == bytes(total)
-        done = True
-        await RisingEdge(dut.clk)
-        mon.cancel()
-        if gen:
-            axi.read_if.r_channel.clear_pause_generator()
-            axi.read_if.r_channel.pause = False
-        await wait_idle(dut)
-        cycles = last - first + 1
-        mbs = total / (cycles * CLK_PERIOD_NS * 1e-9) / 1e6
-        lines.append(f"{depth}|{name}|{burst}|{cycles}|{restarts}|{mbs:.1f}")
-        dut._log.info("BUFFER " + lines[-1])
-
-    # write side (the R FIFO does not change it): WVALID pattern of the crypto DMA in bypass, the adapter delivers
-    # 4 words, then gathers the next 4 (4 cycles without data)
-    def bypass_source():
-        while True:
-            for _ in range(4):
-                yield False
-            for _ in range(4):
-                yield True
-
-    for name, gen in [("write none", None), ("write crypto DMA bypass", bypass_source)]:
-        axi.write_if.max_burst_len = 16
-        first = None
-        last = None
-        restarts = 0
-        done = False
-
-        async def wmonitor():
-            nonlocal first, last, restarts
-            cycle = 0
-            ai = dut.Controller.AXI_Interface
-            while not done:
-                await RisingEdge(dut.clk)
-                cycle += 1
-                if first is None and dut.s_axi_awvalid.value == 1 and dut.s_axi_awready.value == 1:
-                    first = cycle
-                if dut.s_axi_bvalid.value == 1 and dut.s_axi_bready.value == 1:
-                    last = cycle
-                if ai.restart_write.value == 1:
-                    restarts += 1
-
-        if gen:
-            axi.write_if.w_channel.set_pause_generator(gen())
-        mon = cocotb.start_soon(wmonitor())
-        await with_timeout(axi.write(0, bytes(total)), timeout_us=20000)
-        done = True
-        await RisingEdge(dut.clk)
-        mon.cancel()
-        if gen:
-            axi.write_if.w_channel.clear_pause_generator()
-            axi.write_if.w_channel.pause = False
-        await wait_idle(dut)
-        cycles = last - first + 1
-        mbs = total / (cycles * CLK_PERIOD_NS * 1e-9) / 1e6
-        lines.append(f"{depth}|{name}|16|{cycles}|{restarts}|{mbs:.1f}")
-        dut._log.info("BUFFER " + lines[-1])
-    with open(os.environ["BUFFER_ESTIMATE"], "a") as f:
-        f.write("\n".join(lines) + "\n")
 
 
 # --------------------------------------------------------------------------------------------------------------
