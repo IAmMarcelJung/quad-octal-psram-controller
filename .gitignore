@@ -16,6 +16,7 @@ test/memory_models/*
 *.vcd
 *.jou
 *.txt
+!LICENSES/*.txt
 test/testbenches/*.mem
 .Xil/
 *.str
