@@ -10,14 +10,20 @@ module OctalMemoryController_quad #(
     parameter DATA_WIDTH = 32,
     parameter STRB_WIDTH = (DATA_WIDTH / 8),
     parameter ID_WIDTH = 8,
-    parameter CHIP_TYPE = -1  // 1 for simulation with Infineon model, 2 for hardware with APMemory
+    parameter CHIP_TYPE = -1,  // 1 for simulation with Infineon model, 2 for hardware with APMemory
+    // clk frequency range: minimum times (reset) are derived from the highest, maximum times (tCEM) from the lowest
+    parameter integer CLK_FREQ_HZ = 50_000_000,  // highest clk frequency
+    parameter integer CLK_FREQ_MIN_HZ = 10_000_000,  // lowest clk frequency (slower clock for timing problems / tests)
+    parameter integer MEMORY_RESET_CYCLES = (CLK_FREQ_HZ + 49) / 50,  // RESET# low time of the memories (20 ms)
+    parameter integer CEM_MAX_CYCLES = CLK_FREQ_MIN_HZ / 1000 * 7 / 1000,  // longest CE# low time (7 us, tCEM 8 us)
+    parameter BUS_CLOCK_NEGEDGE = 1  // 1: bus clock from a negedge register, centre aligned data; 0: edge aligned (see OctalSPI_quad)
 ) (
     input clk,
-    input reset,
+    input rstn,  // active low, asynchronous assert, synchronous release (SoC: resetn_async)
 
     // SPI Pins
-    output o_spi_bus_clock,
-    output o_spi_bus_clock_neg,
+    output [3:0] o_spi_bus_clock,
+    output [3:0] o_spi_bus_clock_neg,
     output [3:0] o_spi_chip_select_neg,
     output o_spi_reset_neg,
 
@@ -78,6 +84,7 @@ module OctalMemoryController_quad #(
     wire [DATA_WIDTH-1:0] axi_data_read;
     wire [DATA_WIDTH-1:0] axi_data_write;
     wire axi_write_enable;
+    wire axi_write_data_valid;
     wire axi_last_word;
     wire axi_start_transaction;
 
@@ -85,14 +92,20 @@ module OctalMemoryController_quad #(
     OSPIController_quad #(
         .ADDRESS_LENGTH(ADDR_WIDTH),
         .DATA_WIDTH(DATA_WIDTH),
-        .CHIP_TYPE(CHIP_TYPE)
+        .CHIP_TYPE(CHIP_TYPE),
+        .CLK_FREQ_HZ(CLK_FREQ_HZ),
+        .CLK_FREQ_MIN_HZ(CLK_FREQ_MIN_HZ),
+        .MEMORY_RESET_CYCLES(MEMORY_RESET_CYCLES),
+        .CEM_MAX_CYCLES(CEM_MAX_CYCLES),
+        .BUS_CLOCK_NEGEDGE(BUS_CLOCK_NEGEDGE)
     ) SPI_Controller (
         .clk(clk),
-        .reset_neg(!reset),
+        .reset_neg(rstn),
         .go(axi_start_transaction),
 
         .i_address(axi_address),
         .i_write_enable(axi_write_enable),
+        .i_write_data_valid(axi_write_data_valid),
         .i_last_word(axi_last_word),
         .i_data_write(axi_data_write),
         .i_data_word_mask(~s_axi_wstrb), // the axi write strobe signals are inverted to the octal-spi signals
@@ -122,7 +135,7 @@ module OctalMemoryController_quad #(
         .STRB_WIDTH(STRB_WIDTH)
     ) AXI_Interface (
         .clk(clk),
-        .rst_neg(!reset),
+        .rst_neg(rstn),
 
         // Control Interface Pins
         .i_write_word_ready(spi_next_word),
@@ -130,6 +143,7 @@ module OctalMemoryController_quad #(
         .i_busy(spi_busy),
         .o_last_word(axi_last_word),
         .o_write_enable(axi_write_enable),
+        .o_write_data_valid(axi_write_data_valid),
         .o_start_transaction(axi_start_transaction),
         .o_address(axi_address),
         .o_write_data(axi_data_write),
