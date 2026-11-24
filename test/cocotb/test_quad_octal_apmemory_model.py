@@ -915,7 +915,7 @@ async def random_stall_test(dut, seed):
 async def latency_setup_test(dut):
     """
     Four chips share one clock and the controller samples at a fixed time, so the chips must run with fixed
-    read latency (MR0[5] = 1) - otherwise a refresh collision in one chip shifts its data (issue #27).
+    read latency (MR0[5] = 1) - otherwise a refresh collision in one chip shifts its data.
     """
     axi = await setup(dut)
     await with_timeout(axi.read(0x0, 4))

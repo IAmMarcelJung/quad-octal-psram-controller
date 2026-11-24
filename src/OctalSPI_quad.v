@@ -130,10 +130,10 @@ module OctalSPI_quad #(
     localparam INFINEON_LATENCY_CYCLES = 7;
     localparam APMEMORY_LATENCY_CYCLES = 5;
     // times two because of the two clock edges
-    localparam integer LATENCY_CYCLES = (CHIP_TYPE == 1) ? INFINEON_LATENCY_CYCLES * 2 : APMEMORY_LATENCY_CYCLES * 2;    // ToDo think about a better switch (issue #12)
+    localparam integer LATENCY_CYCLES = (CHIP_TYPE == 1) ? INFINEON_LATENCY_CYCLES * 2 : APMEMORY_LATENCY_CYCLES * 2;    // ToDo think about a better switch (upstream issue #12)
     // the first latency already begins after the sample point of the upper address
     // therefore we have to subtract one cycle (-2) from the latency
-    localparam integer NUM_SHORT_LATENCY_CYCLES = (CHIP_TYPE == 1) ? LATENCY_CYCLES + 2 : LATENCY_CYCLES - 2;   // ToDo think about a better switch (issue #12)
+    localparam integer NUM_SHORT_LATENCY_CYCLES = (CHIP_TYPE == 1) ? LATENCY_CYCLES + 2 : LATENCY_CYCLES - 2;   // ToDo think about a better switch (upstream issue #12)
     // APMemory runs with fixed read latency (MR0[5] = 1, set by the controller after reset): 2 * LC for every read
     localparam integer NUM_LONG_LATENCY_CYCLES = (CHIP_TYPE == 1) ? LATENCY_CYCLES * 2 + 2 : LATENCY_CYCLES * 2 - 2;
 
@@ -155,12 +155,12 @@ module OctalSPI_quad #(
     /* verilator lint_on WIDTHTRUNC */
     reg [COUNT_WIDTH-1:0] count_reg;
     reg [COUNT_WIDTH-1:0] count_nxt;
-    //localparam integer READ_LATENCY_IN_CYCLE = 1; // (issue #15)
 
-    // ToDo: why was this in en_data_strobe?: | state_reg == WAIT_LATENCY 
     assign en_data_strobe  = (state_reg == SEND_DATA | (~i_config_read_data & (state_reg == CS_HIGH | state_reg == FINISH)));   // FINISH is needed, because otherwise the model does not store the value
     assign o_data_strobe = data_strobe_out_reg;
-    assign data_strobe_in = i_data_strobe[0];   // ToDo: this is not perfect, because the chips may have different delays - better set them to fixed delay (issue #owas)
+    // DQS input: only used by the Infineon variant (latency indication), taken from chip 0. APMemory runs with fixed
+    // latency (MR0), so its DQS input is not used.
+    assign data_strobe_in = i_data_strobe[0];
     assign o_data_strobe_output_enable = {4{en_data_strobe}};
 
     // bus_clock_neg_reg is bus_clock_p2_reg half a clk earlier: it takes bus_clock_p2_nxt on the negedge before
@@ -235,7 +235,7 @@ module OctalSPI_quad #(
                     if (i_config_write_address) begin
                         count_nxt = COUNT_ADDRESS;
                         state_nxt = SEND_ADDRESS;
-                        has_latency_nxt = (CHIP_TYPE == 1) ? data_strobe_in : i_config_read_data;     // ToDo change (issue #12)
+                        has_latency_nxt = (CHIP_TYPE == 1) ? data_strobe_in : i_config_read_data;     // ToDo change (upstream issue #12)
                     end else state_nxt = CS_HIGH;
                 end
             end
@@ -244,7 +244,7 @@ module OctalSPI_quad #(
                 count_nxt = count_reg - 1;
 
                 if (count_reg == 0) begin
-                    if (has_latency_reg)  // ToDo change (issue #12)
+                    if (has_latency_reg)  // ToDo change (upstream issue #12)
                         count_nxt = i_config_read_data ? COUNT_LONG_LATENCY_READ : COUNT_LONG_LATENCY_WRITE;
                     else count_nxt = i_config_read_data ? COUNT_SHORT_LATENCY_READ : COUNT_SHORT_LATENCY_WRITE;
 
@@ -279,7 +279,7 @@ module OctalSPI_quad #(
             SEND_DATA: begin
                 count_nxt = 0;
                 // we check the clock, because we always have to send two bytes
-                // on the first byte sent out, the clock is always low  ToDo: (issue #12) maybe better description, maybe unnecessary because the clock shift is not needed?
+                // on the first byte sent out, the clock is always low  ToDo (upstream issue #12): maybe better description, maybe unnecessary because the clock shift is not needed?
                 if (last_word_reg & bus_clock_p2_reg[0] & count_reg == 0) begin
                     state_nxt = CS_HIGH;
                 end

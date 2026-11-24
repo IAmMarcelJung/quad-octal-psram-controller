@@ -72,8 +72,9 @@ module OSPIController_quad #(
     localparam CONFIG_ADDRESS = (CHIP_TYPE == 1) ? 32'h00800002 : 32'h00000000;  // APMemory: MR0
     localparam CONFIG_QSPI_ENABLE = 8'b00000010;
     // APMemory MR0: fixed read latency (MR0[5]), latency code 5 (MR0[4:2] = 010), 1/4 drive strength (MR0[1:0] = 01).
-    // The four chips share one clock and are sampled at a fixed time, so a refresh pushout of the variable latency
-    // in one chip would shift its data (issue #27).
+    // The four chips run in lockstep (same bus clock timing, one clock output per chip) and their read data is
+    // sampled at a fixed time, not with DQS, so a refresh pushout of the variable latency in one chip would shift
+    // its data against the others.
     localparam [7:0] APMEMORY_MR0 = 8'b0010_1001;
     localparam [DATA_WIDTH-1:0] CONFIG_DATA = (CHIP_TYPE == 1) ? {24'd0, CONFIG_QSPI_ENABLE} : {STRB_WIDTH{APMEMORY_MR0}};
 
@@ -119,7 +120,7 @@ module OSPIController_quad #(
     reg                       last_word_reg;
     wire [    DATA_WIDTH-1:0] read_word;
 
-    // Config stuff - ToDo: this should be later configured using a second port (issue #16)
+    // Config stuff - ToDo: this should be later configured using a second port (upstream issue #16)
     wire                      config_write_address;
     wire                      config_write_data;
     wire                      config_read_data;
@@ -139,17 +140,16 @@ module OSPIController_quad #(
     reg [INDEX_STATES_MSB:0] control_state_reg;
     reg [INDEX_STATES_MSB:0] control_state_nxt;
 
-    localparam [OPCODE_LENGTH -1 : 0] OPCODE_READ_INFINEON = 8'hEE;  // Infineon
-    localparam [OPCODE_LENGTH -1 : 0] OPCODE_READ_APMEMORY = 8'h20;    // AP Memory    ToDo: cleanup (issue #12)
+    localparam [OPCODE_LENGTH -1 : 0] OPCODE_READ_INFINEON = 8'hEE;
+    localparam [OPCODE_LENGTH -1 : 0] OPCODE_READ_APMEMORY = 8'h20;  // APMemory linear burst read
     localparam [OPCODE_LENGTH -1 : 0] OPCODE_READ = (CHIP_TYPE == 1) ? OPCODE_READ_INFINEON : OPCODE_READ_APMEMORY;
     localparam [OPCODE_LENGTH -1 : 0] OPCODE_WRITE_ENABLE = 8'h06;
-    localparam [OPCODE_LENGTH -1 : 0] OPCODE_WRITE_INFINEON = 8'hDE;  // Infineon
-    localparam [OPCODE_LENGTH -1 : 0] OPCODE_WRITE_APMEMORY = 8'hA0;  // AP Memory
+    localparam [OPCODE_LENGTH -1 : 0] OPCODE_WRITE_INFINEON = 8'hDE;
+    localparam [OPCODE_LENGTH -1 : 0] OPCODE_WRITE_APMEMORY = 8'hA0;  // APMemory linear burst write
     localparam [OPCODE_LENGTH -1 : 0] OPCODE_WRITE = (CHIP_TYPE == 1) ? OPCODE_WRITE_INFINEON : OPCODE_WRITE_APMEMORY;
     localparam [OPCODE_LENGTH -1 : 0] OPCODE_WRITE_ANY_REG = (CHIP_TYPE == 1) ? 8'h00 : 8'hC0;  // APMemory: mode register write
     // APMemory has no write enable command
     localparam HAS_WRITE_ENABLE = (CHIP_TYPE == 1);
-    //localparam [OPCODE_LENGTH -1 : 0] OPCODE_LONG_ADDRESS_ENABLE = 8'h00;
 
     // CE# low time of the current memory transaction (tCEM)
     reg [CEM_COUNTER_WIDTH-1:0] cem_counter;
@@ -232,7 +232,7 @@ module OSPIController_quad #(
     assign o_data_read = data_read_reg;
 
 
-    reg [DELAY_COUNTER_WIDTH-1:0] delay_fsm;  // ToDo: make this more beautifull - the state machine probably needs multiple delays. (issue #10)
+    reg [DELAY_COUNTER_WIDTH-1:0] delay_fsm;
     always @(*) begin : control_logic
         address_nxt = address_reg;
         opcode_nxt = opcode_reg;
@@ -345,7 +345,7 @@ module OSPIController_quad #(
 
         if (control_state_reg == WRITE | control_state_reg == READ | control_state_reg == WRITE_CONFIG) begin
             if (spi_write_next_byte | spi_read_next_byte) begin
-                write_next_word_nxt = 1;     // ToDo: the DATA_BYTES can make problems, when it is too small (issue #10)
+                write_next_word_nxt = 1;     // ToDo: the DATA_BYTES can make problems, when it is too small (upstream issue #10)
                 read_next_word_nxt = 1;
 
                 data_in_muxed_nxt = (config_is_config_operation) ? config_data_reg : i_data_write;
@@ -369,7 +369,7 @@ module OSPIController_quad #(
     end
 
     // problem: when an unalligned read is done, some old data still resides in the read register
-    // either it should be reset to 0 or masked out by the byte strobe thingy (issue #18)
+    // either it should be reset to 0 or masked out by the byte strobe thingy (upstream issue #18)
 
     always @(posedge clk or negedge reset_neg) begin : data_register
         if (!reset_neg) begin
@@ -380,7 +380,7 @@ module OSPIController_quad #(
             read_next_word_reg <= 0;
             write_next_word_reg <= 0;
             write_stop_reg <= 0;
-            config_data_reg <= CONFIG_DATA;  // this is set only on reset - it should be more configurable (issue #16)
+            config_data_reg <= CONFIG_DATA;  // this is set only on reset - it should be more configurable (upstream issue #16)
             // problem is, that on the go signal, the transmitter is started. So on the next clock edge it will sample the data.
             // if the config_data_nxt is set to the correct value, then it arrives a cycle late.
         end else begin
