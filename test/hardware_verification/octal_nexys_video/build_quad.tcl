@@ -39,7 +39,6 @@ generate_target all [get_ips]
 synth_ip [get_ips]
 
 # sources
-# AXI4Subordinate.v last: it sets `default_nettype none without resetting it afterwards
 read_verilog [list \
     $repo_dir/src/OctalSPI_quad.v \
     $repo_dir/src/OSPIController_quad.v \

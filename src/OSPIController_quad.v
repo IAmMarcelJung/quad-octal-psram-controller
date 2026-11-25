@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-`timescale 1ns / 100ps
+`default_nettype none
 /*
 SPI Controller
 
@@ -400,3 +400,6 @@ module OSPIController_quad #(
 
 
 endmodule
+
+// restore the default for files compiled after this one
+`default_nettype wire

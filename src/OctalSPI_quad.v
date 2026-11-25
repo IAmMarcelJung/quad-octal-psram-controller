@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-`timescale 1ps / 1ps
+`default_nettype none
 /*
 OctalSPI
 
@@ -414,3 +414,6 @@ module OctalSPI_quad #(
     endgenerate
     /* verilator lint_on MODMISSING */
 endmodule
+
+// restore the default for files compiled after this one
+`default_nettype wire
