@@ -14,20 +14,20 @@ module top_quad #(
     output o_spi_reset_neg,
 
     output       o_spi_a_chipselect_neg,
-    inout       io_spi_a_datastrobe,
-    inout [7:0] io_spi_a_data,
+    inout        io_spi_a_datastrobe,
+    inout  [7:0] io_spi_a_data,
 
     output       o_spi_b_chipselect_neg,
-    inout       io_spi_b_datastrobe,
-    inout [7:0] io_spi_b_data,
+    inout        io_spi_b_datastrobe,
+    inout  [7:0] io_spi_b_data,
 
     output       o_spi_c_chipselect_neg,
-    inout       io_spi_c_datastrobe,
-    inout [7:0] io_spi_c_data,
+    inout        io_spi_c_datastrobe,
+    inout  [7:0] io_spi_c_data,
 
     output       o_spi_d_chipselect_neg,
-    inout       io_spi_d_datastrobe,
-    inout [7:0] io_spi_d_data,
+    inout        io_spi_d_datastrobe,
+    inout  [7:0] io_spi_d_data,
 
     // FMC Voltage Selection
     output [1:0] set_vadj,
@@ -76,7 +76,7 @@ module top_quad #(
     wire axi_rlast;
     wire axi_rvalid;
     wire axi_rready;
-    
+
     wire sys_clk;
 
     wire [3:0] control_data_output_enable;
@@ -143,16 +143,18 @@ module top_quad #(
         .CHIP_TYPE(APMEMORY_CHIP),
         .BUS_CLOCK_NEGEDGE(BUS_CLOCK_NEGEDGE)
     ) Controller (
-        .clk  (sys_clk),
-        .rstn(~sys_reset),  // sys_reset is released synchronously
+        .clk (sys_clk),
+        .rstn(~sys_reset), // sys_reset is released synchronously
 
         // SPI Pins
         .o_spi_bus_clock(bus_clock),
         .o_spi_bus_clock_neg(bus_clock_neg),
-        .o_spi_chip_select_neg({o_spi_d_chipselect_neg, 
-                                o_spi_c_chipselect_neg,
-                                o_spi_b_chipselect_neg,
-                                o_spi_a_chipselect_neg}),
+        .o_spi_chip_select_neg({
+            o_spi_d_chipselect_neg,
+            o_spi_c_chipselect_neg,
+            o_spi_b_chipselect_neg,
+            o_spi_a_chipselect_neg
+        }),
         .o_spi_reset_neg(o_spi_reset_neg),
 
         .i_data_strobe(control_i_data_strobe),

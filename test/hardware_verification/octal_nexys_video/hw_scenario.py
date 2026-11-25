@@ -67,12 +67,14 @@ def to_tcl():
             )
             out.append(f"run_hw_axi [get_hw_axi_txns {name}]")
         else:
-            out.append(f"create_hw_axi_txn -force {name} $axi -type read -address {addr:08x} -len {arg}")
+            out.append(
+                f"create_hw_axi_txn -force {name} $axi -type read -address {addr:08x} -len {arg}"
+            )
             out.append(f"run_hw_axi [get_hw_axi_txns {name}]")
             out.append(f"set d [get_property DATA [get_hw_axi_txns {name}]]")
             out.append(
-                f'set w {{}}; for {{set i [expr {{[string length $d] - 8}}]}} {{$i >= 0}} {{incr i -8}} '
-                f'{{lappend w [string range $d $i [expr {{$i + 7}}]]}}'
+                f"set w {{}}; for {{set i [expr {{[string length $d] - 8}}]}} {{$i >= 0}} {{incr i -8}} "
+                f"{{lappend w [string range $d $i [expr {{$i + 7}}]]}}"
             )
             out.append(f'puts $fh "R {addr:08x} [join $w {{ }}]"')
     out.append("close $fh")

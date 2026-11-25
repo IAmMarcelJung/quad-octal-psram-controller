@@ -16,7 +16,7 @@ class DummyData:
 
         for _ in range(num_bytes):
             self._array.append(random.randrange(256))
-    
+
     def generate_ordered_test_array(self, num_bytes):
         self._array = []
         self.num_bytes = num_bytes

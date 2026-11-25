@@ -120,7 +120,9 @@ module aps12808l_model #(
         t_ce_fall = 0;
         t_ce_rise = 0;
         seed = SEED;
-        if (INIT_BYTE >= 0) for (init_i = 0; init_i < (1 << ADDR_BITS); init_i = init_i + 1) mem[init_i] = INIT_BYTE;
+        if (INIT_BYTE >= 0)
+            for (init_i = 0; init_i < (1 << ADDR_BITS); init_i = init_i + 1)
+            mem[init_i] = INIT_BYTE;
     end
 
     task automatic error(input [8*96-1:0] msg);
@@ -163,8 +165,7 @@ module aps12808l_model #(
             if (is_linear || is_mr) begin
                 cur_addr[9:0] = cur_addr[9:0] + 1;  // linear burst: 1K wrap (no RBX)
             end else begin
-                if ((cur_addr % burst_len) == burst_len - 1)
-                    cur_addr = cur_addr - (burst_len - 1);
+                if ((cur_addr % burst_len) == burst_len - 1) cur_addr = cur_addr - (burst_len - 1);
                 else cur_addr = cur_addr + 1;
 
                 // hybrid wrap: after one wrapped pass continue linear in the 1K row
@@ -210,7 +211,8 @@ module aps12808l_model #(
                         default: error("mode register write to a read only / unknown register");
                     endcase
                     mr_write_count = mr_write_count + 1;
-                    $display("[%0t ps] APS12808L %m: MR%0d <= %02h (clock %0d)", $time, mr_addr, data, rise_cnt);
+                    $display("[%0t ps] APS12808L %m: MR%0d <= %02h (clock %0d)", $time, mr_addr,
+                             data, rise_cnt);
                 end
             end else begin
                 if (cur_addr[23:0] >= (1 << ADDR_BITS))
@@ -311,7 +313,8 @@ module aps12808l_model #(
                     default: begin
                         unknown_cmd_count = unknown_cmd_count + 1;
                         // counted separately - the real device most likely ignores it
-                        $display("[%0t ps] APS12808L %m WARNING: unknown instruction %02h", $time, inst);
+                        $display("[%0t ps] APS12808L %m WARNING: unknown instruction %02h", $time,
+                                 inst);
                     end
                 endcase
                 is_linear = (inst == CMD_READ_LINEAR || inst == CMD_WRITE_LINEAR);
@@ -369,7 +372,7 @@ module aps12808l_model #(
                             latency = 2 * latency;  // refresh collision
                     end
                     last_latency = latency;
-                    read_count = read_count + 1;
+                    read_count   = read_count + 1;
                 end
             end
 

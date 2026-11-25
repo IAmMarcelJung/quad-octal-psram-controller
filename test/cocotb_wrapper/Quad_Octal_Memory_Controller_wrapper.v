@@ -9,7 +9,7 @@ module Quad_Octal_Memory_Controller_wrapper #(
     // Width of wstrb (width of data bus in words)
     parameter STRB_WIDTH = (DATA_WIDTH / 8),
     // Width of ID signal
-    parameter ID_WIDTH = 8
+    parameter ID_WIDTH   = 8
 ) (
     input clk,
     input reset,
@@ -94,7 +94,7 @@ module Quad_Octal_Memory_Controller_wrapper #(
         .ID_WIDTH  (ID_WIDTH),
         .CHIP_TYPE (INFINEON_CHIP)
     ) Controller (
-        .clk  (clk),
+        .clk (clk),
         .rstn(~reset),
 
         // SPI Pins
