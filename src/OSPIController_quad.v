@@ -65,7 +65,6 @@ module OSPIController_quad #(
 
     // constants
     localparam integer OPCODE_LENGTH = 8;
-    localparam DELAY_CYCLES = 10;
 
     // Chip specific hardcoded constants
     localparam CONFIG_ADDRESS = 32'h00000000;  // MR0
@@ -85,13 +84,11 @@ module OSPIController_quad #(
     // Counter widths from their largest value (a Verilog integer would give 32 flip-flops each)
     localparam integer RESET_COUNTER_WIDTH = $clog2(RESET_DONE_CYCLES + 1);
     localparam integer CEM_COUNTER_WIDTH = $clog2(CEM_MAX_CYCLES + 1);
-    localparam integer DELAY_COUNTER_WIDTH = $clog2(DELAY_CYCLES + 1);
     // the values fit by construction of the widths above
     /* verilator lint_off WIDTHTRUNC */
     localparam [RESET_COUNTER_WIDTH-1:0] RESET_LOW_END = RESET_CYCLES;
     localparam [RESET_COUNTER_WIDTH-1:0] RESET_DONE = RESET_DONE_CYCLES;
     localparam [CEM_COUNTER_WIDTH-1:0] CEM_MAX = CEM_MAX_CYCLES;
-    localparam [DELAY_COUNTER_WIDTH-1:0] DELAY_DONE = DELAY_CYCLES;
     /* verilator lint_on WIDTHTRUNC */
 
     // Logic stuff
@@ -125,14 +122,12 @@ module OSPIController_quad #(
     reg                       config_is_config_operation;
 
     // states control FSM
-    localparam NUM_STATES = 6;
-    localparam INDEX_STATES_MSB = $clog2(NUM_STATES) - 1;
+    // the former Infineon write enable states (2, 5) are gone, the others keep their encoding
+    localparam INDEX_STATES_MSB = 2;
     localparam [INDEX_STATES_MSB:0] IDLE = 0;
     localparam [INDEX_STATES_MSB:0] READ = 1;
-    localparam [INDEX_STATES_MSB:0] WRITE_ENABLE = 2;
     localparam [INDEX_STATES_MSB:0] WRITE = 3;
     localparam [INDEX_STATES_MSB:0] WRITE_CONFIG = 4;
-    localparam [INDEX_STATES_MSB:0] WAIT = 5;
 
     (* dont_touch = "true" *)
     reg [INDEX_STATES_MSB:0] control_state_reg;
@@ -141,9 +136,7 @@ module OSPIController_quad #(
     localparam [OPCODE_LENGTH -1 : 0] OPCODE_READ = 8'h20;  // linear burst read
     localparam [OPCODE_LENGTH -1 : 0] OPCODE_WRITE = 8'hA0;  // linear burst write
     localparam [OPCODE_LENGTH -1 : 0] OPCODE_WRITE_ANY_REG = 8'hC0;  // mode register write
-    // APMemory has no write enable command
-    localparam HAS_WRITE_ENABLE = 0;
-    localparam [OPCODE_LENGTH -1 : 0] OPCODE_WRITE_ENABLE = 8'h06;
+    // APMemory needs no write enable command before a write
 
     // CE# low time of the current memory transaction (tCEM)
     reg [CEM_COUNTER_WIDTH-1:0] cem_counter;
@@ -217,7 +210,7 @@ module OSPIController_quad #(
     );
 
 
-    assign start_transmission = (control_state_reg != IDLE && control_state_reg != WAIT);
+    assign start_transmission = (control_state_reg != IDLE);
     assign config_read_data = (control_state_reg == READ);
     assign config_write_data = (control_state_reg == WRITE || control_state_reg == WRITE_CONFIG);
     assign config_write_address = (control_state_reg == READ || control_state_reg == WRITE || control_state_reg == WRITE_CONFIG);
@@ -225,7 +218,6 @@ module OSPIController_quad #(
     assign o_data_read = data_read_reg;
 
 
-    reg [DELAY_COUNTER_WIDTH-1:0] delay_fsm;
     always @(*) begin : control_logic
         address_nxt = address_reg;
         opcode_nxt = opcode_reg;
@@ -235,35 +227,22 @@ module OSPIController_quad #(
             IDLE: begin
                 if (config_start) begin
                     address_nxt = CONFIG_ADDRESS;
-                    opcode_nxt = HAS_WRITE_ENABLE ? OPCODE_WRITE_ENABLE : OPCODE_WRITE_ANY_REG;
-                    control_state_nxt = HAS_WRITE_ENABLE ? WRITE_ENABLE : WRITE_CONFIG;
+                    opcode_nxt = OPCODE_WRITE_ANY_REG;
+                    control_state_nxt = WRITE_CONFIG;
                 end else if (go) begin
                     address_nxt = i_address;
                     if (!i_write_enable) begin
                         opcode_nxt = OPCODE_READ;
                         control_state_nxt = READ;
                     end else begin
-                        opcode_nxt = HAS_WRITE_ENABLE ? OPCODE_WRITE_ENABLE : OPCODE_WRITE;
-                        control_state_nxt = HAS_WRITE_ENABLE ? WRITE_ENABLE : WRITE;
+                        opcode_nxt = OPCODE_WRITE;
+                        control_state_nxt = WRITE;
                     end
                 end
             end
 
             READ: begin
                 if (transmitter_finish) control_state_nxt = IDLE;
-            end
-
-            WRITE_ENABLE: begin
-                if (transmitter_finish) begin
-                    control_state_nxt = WAIT;
-                end
-            end
-
-            WAIT: begin
-                if (delay_fsm == DELAY_DONE) begin
-                    control_state_nxt = (config_is_config_operation) ? WRITE_CONFIG : WRITE;
-                    opcode_nxt = (config_is_config_operation) ? OPCODE_WRITE_ANY_REG : OPCODE_WRITE;
-                end
             end
 
             WRITE: begin
@@ -288,18 +267,12 @@ module OSPIController_quad #(
             config_is_config_operation <= 1'b0;
             init_done <= 1'b0;
             cem_counter <= 0;
-            delay_fsm <= 0;
         end else begin
             address_reg <= address_nxt;
             opcode_reg <= opcode_nxt;
             control_state_reg <= control_state_nxt;
-            delay_fsm <= 0;
             if (control_state_reg == IDLE) cem_counter <= 0;
             else if (!cem_timeout) cem_counter <= cem_counter + 1'b1;
-
-            if (control_state_reg == WAIT) begin
-                delay_fsm <= delay_fsm + 1'b1;
-            end
 
             if (config_start) config_is_config_operation <= 1'b1;
             if (control_state_reg == WRITE_CONFIG && transmitter_finish) begin
