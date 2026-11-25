@@ -30,37 +30,37 @@ module OSPIController_quad #(
     parameter integer CEM_MAX_CYCLES = CLK_FREQ_MIN_HZ / 1000 * 7 / 1000,
     parameter BUS_CLOCK_NEGEDGE = 1  // see OctalSPI_quad
 ) (
-    input clk,
-    input reset_neg,
-    input go,
+    input wire clk,
+    input wire reset_neg,
+    input wire go,
 
     /* verilator lint_off UNUSEDSIGNAL */
     // because we have 4 chips in parallel, we discard the lowest 2 bits and always write/read and use byte masking
-    input  [ADDRESS_LENGTH-1:0] i_address,
+    input  wire [ADDRESS_LENGTH-1:0] i_address,
     /* verilator lint_on UNUSEDSIGNAL */
-    input                       i_write_enable,
-    input                       i_write_data_valid,   // wvalid of i_data_write
-    input                       i_last_word,
-    input  [    STRB_WIDTH-1:0] i_data_word_mask,
-    input  [    DATA_WIDTH-1:0] i_data_write,
-    output [    DATA_WIDTH-1:0] o_data_read,
-    output                      o_busy,
-    output                      o_next_word,
-    output                      o_recieved_next_word,
+    input  wire                      i_write_enable,
+    input  wire                      i_write_data_valid,   // wvalid of i_data_write
+    input  wire                      i_last_word,
+    input  wire [    STRB_WIDTH-1:0] i_data_word_mask,
+    input  wire [    DATA_WIDTH-1:0] i_data_write,
+    output wire [    DATA_WIDTH-1:0] o_data_read,
+    output wire                      o_busy,
+    output wire                      o_next_word,
+    output wire                      o_recieved_next_word,
 
     // SPI Pins
-    output [3:0] o_bus_clock,
-    output [3:0] o_bus_clock_neg,
-    output [3:0] o_chip_select_neg,
-    output o_reset_neg,
+    output wire [3:0] o_bus_clock,
+    output wire [3:0] o_bus_clock_neg,
+    output wire [3:0] o_chip_select_neg,
+    output wire o_reset_neg,
 
-    input  [3:0] i_data_strobe,
-    output [3:0] o_data_strobe,
-    output [3:0] o_data_strobe_output_enable, // 0 input, 1 output
+    input  wire [3:0] i_data_strobe,
+    output wire [3:0] o_data_strobe,
+    output wire [3:0] o_data_strobe_output_enable, // 0 input, 1 output
 
-    input [DATA_WIDTH-1:0] i_data,
-    output [DATA_WIDTH-1:0] o_data,
-    output [3:0] o_data_output_enable  // 0 input, 1 output
+    input wire [DATA_WIDTH-1:0] i_data,
+    output wire [DATA_WIDTH-1:0] o_data,
+    output wire [3:0] o_data_output_enable  // 0 input, 1 output
 );
 
     // constants

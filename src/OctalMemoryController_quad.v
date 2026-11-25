@@ -21,22 +21,22 @@ module OctalMemoryController_quad #(
     // read data FIFO: 0 = none, else a power of 2 (>= 2); RREADY stalls then no longer split the memory burst
     parameter integer R_FIFO_DEPTH = 0
 ) (
-    input clk,
-    input rstn, // active low, asynchronous assert, synchronous release (SoC: resetn_async)
+    input wire clk,
+    input wire rstn, // active low, asynchronous assert, synchronous release (SoC: resetn_async)
 
     // SPI Pins
-    output [3:0] o_spi_bus_clock,
-    output [3:0] o_spi_bus_clock_neg,
-    output [3:0] o_spi_chip_select_neg,
-    output o_spi_reset_neg,
+    output wire [3:0] o_spi_bus_clock,
+    output wire [3:0] o_spi_bus_clock_neg,
+    output wire [3:0] o_spi_chip_select_neg,
+    output wire o_spi_reset_neg,
 
-    input  [STRB_WIDTH-1:0] i_data_strobe,
-    output [STRB_WIDTH-1:0] o_data_strobe,
-    output [STRB_WIDTH-1:0] o_data_strobe_output_enable, // 0 input, 1 output
+    input  wire [STRB_WIDTH-1:0] i_data_strobe,
+    output wire [STRB_WIDTH-1:0] o_data_strobe,
+    output wire [STRB_WIDTH-1:0] o_data_strobe_output_enable, // 0 input, 1 output
 
-    input  [DATA_WIDTH-1:0] i_data,
-    output [DATA_WIDTH-1:0] o_data,
-    output [STRB_WIDTH-1:0] o_data_output_enable, // 0 input, 1 output
+    input  wire [DATA_WIDTH-1:0] i_data,
+    output wire [DATA_WIDTH-1:0] o_data,
+    output wire [STRB_WIDTH-1:0] o_data_output_enable, // 0 input, 1 output
 
     // AXI Pins
     input  wire [  ID_WIDTH-1:0] s_axi_awid,     // write address channel
