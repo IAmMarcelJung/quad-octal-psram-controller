@@ -21,41 +21,41 @@ module OctalSPI_quad #(
     //    Default: the edge aligned variant has negative write hold at the PSRAM in the ASIC STA.
     parameter BUS_CLOCK_NEGEDGE = 1
 ) (
-    input clk,
-    input reset_neg,
-    input start_transmission,
+    input wire clk,
+    input wire reset_neg,
+    input wire start_transmission,
 
-    input  [ADDRESS_LENGTH-1:0] i_address,
-    input  [               7:0] i_opcode,
-    input                       i_config_read_data,
-    input                       i_config_write_data,
-    input                       i_config_write_address,
-    input                       i_register_write,        // APMemory mode register write: latency 1
-    input                       i_last_word,
-    input  [    STRB_WIDTH-1:0] i_data_word_mask,
-    input  [    DATA_WIDTH-1:0] i_data_write,
-    output [    DATA_WIDTH-1:0] o_data_read,
-    output                      o_finish,
-    output                      o_need_next_word,
-    output                      o_recieved_next_word,
+    input wire [ADDRESS_LENGTH-1:0] i_address,
+    input wire [7:0] i_opcode,
+    input wire i_config_read_data,
+    input wire i_config_write_data,
+    input wire i_config_write_address,
+    input wire i_register_write,  // APMemory mode register write: latency 1
+    input wire i_last_word,
+    input wire [STRB_WIDTH-1:0] i_data_word_mask,
+    input wire [DATA_WIDTH-1:0] i_data_write,
+    output wire [DATA_WIDTH-1:0] o_data_read,
+    output wire o_finish,
+    output wire o_need_next_word,
+    output wire o_recieved_next_word,
 
     // OctalSPI Pins
-    output     [3:0] o_bus_clock,
-    output     [3:0] o_bus_clock_neg,
-    output reg [3:0] o_chip_select_neg,
+    output wire [3:0] o_bus_clock,
+    output wire [3:0] o_bus_clock_neg,
+    output reg  [3:0] o_chip_select_neg,
 
     /* verilator lint_off UNUSEDSIGNAL */
     // the bits [3:1] are not used, because with the current setup we cannot react to the chips individually
     // for this we would need 4 seperated clocks
     // to fix this, we need to set the default delay of the chips to always be the same and not be dependant on the chip refresh.
-    input  [3:0] i_data_strobe,
+    input  wire [3:0] i_data_strobe,
     /* verilator lint_on UNUSEDSIGNAL */
-    output [3:0] o_data_strobe,
-    output [3:0] o_data_strobe_output_enable, // 0 input, 1 output
+    output wire [3:0] o_data_strobe,
+    output wire [3:0] o_data_strobe_output_enable, // 0 input, 1 output
 
-    input [DATA_WIDTH-1:0] i_data,
-    output [DATA_WIDTH-1:0] o_data,
-    output [3:0] o_data_output_enable  // 0 input, 1 output
+    input wire [DATA_WIDTH-1:0] i_data,
+    output wire [DATA_WIDTH-1:0] o_data,
+    output wire [3:0] o_data_output_enable  // 0 input, 1 output
 );
 
     // constants
