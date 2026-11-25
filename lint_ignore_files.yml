@@ -4,7 +4,6 @@ files:
   - src/OctalMemoryController_quad.v
   - src/OSPIController_quad.v
   # quad path simulation / FPGA files (timing delays, not synthesized for the chip)
-  - test/cocotb_wrapper/Quad_Octal_Memory_Controller_wrapper.v
   - test/cocotb_wrapper/Quad_Octal_Memory_Controller_apm_wrapper.v
   - test/hardware_verification/octal_nexys_video/top_quad.v
   - test/sim_models/aps12808l_model.v

@@ -16,7 +16,6 @@ module OSPIController_quad #(
     parameter ADDRESS_LENGTH = 32,
     parameter DATA_WIDTH = 32,
     parameter STRB_WIDTH = DATA_WIDTH / 8,
-    parameter CHIP_TYPE = -1,  // 1 is Infineon, 2 is APMemory
     // clk frequency range: minimum times (RESET#, tRST) are derived from the highest frequency, the maximum time
     // tCEM from the lowest one, so any clk between the two is safe (verified at 50 and 10 MHz)
     parameter integer CLK_FREQ_HZ = 50_000_000,
@@ -69,14 +68,13 @@ module OSPIController_quad #(
     localparam DELAY_CYCLES = 10;
 
     // Chip specific hardcoded constants
-    localparam CONFIG_ADDRESS = (CHIP_TYPE == 1) ? 32'h00800002 : 32'h00000000;  // APMemory: MR0
-    localparam CONFIG_QSPI_ENABLE = 8'b00000010;
+    localparam CONFIG_ADDRESS = 32'h00000000;  // MR0
     // APMemory MR0: fixed read latency (MR0[5]), latency code 5 (MR0[4:2] = 010), 1/4 drive strength (MR0[1:0] = 01).
     // The four chips run in lockstep (same bus clock timing, one clock output per chip) and their read data is
     // sampled at a fixed time, not with DQS, so a refresh pushout of the variable latency in one chip would shift
     // its data against the others.
     localparam [7:0] APMEMORY_MR0 = 8'b0010_1001;
-    localparam [DATA_WIDTH-1:0] CONFIG_DATA = (CHIP_TYPE == 1) ? {24'd0, CONFIG_QSPI_ENABLE} : {STRB_WIDTH{APMEMORY_MR0}};
+    localparam [DATA_WIDTH-1:0] CONFIG_DATA = {STRB_WIDTH{APMEMORY_MR0}};
 
     // After RESET# went high tRST (2 us) has to pass before the first command, RESET_RECOVERY_CYCLES gives 4 us
     // (rounded up).
@@ -140,16 +138,12 @@ module OSPIController_quad #(
     reg [INDEX_STATES_MSB:0] control_state_reg;
     reg [INDEX_STATES_MSB:0] control_state_nxt;
 
-    localparam [OPCODE_LENGTH -1 : 0] OPCODE_READ_INFINEON = 8'hEE;
-    localparam [OPCODE_LENGTH -1 : 0] OPCODE_READ_APMEMORY = 8'h20;  // APMemory linear burst read
-    localparam [OPCODE_LENGTH -1 : 0] OPCODE_READ = (CHIP_TYPE == 1) ? OPCODE_READ_INFINEON : OPCODE_READ_APMEMORY;
-    localparam [OPCODE_LENGTH -1 : 0] OPCODE_WRITE_ENABLE = 8'h06;
-    localparam [OPCODE_LENGTH -1 : 0] OPCODE_WRITE_INFINEON = 8'hDE;
-    localparam [OPCODE_LENGTH -1 : 0] OPCODE_WRITE_APMEMORY = 8'hA0;  // APMemory linear burst write
-    localparam [OPCODE_LENGTH -1 : 0] OPCODE_WRITE = (CHIP_TYPE == 1) ? OPCODE_WRITE_INFINEON : OPCODE_WRITE_APMEMORY;
-    localparam [OPCODE_LENGTH -1 : 0] OPCODE_WRITE_ANY_REG = (CHIP_TYPE == 1) ? 8'h00 : 8'hC0;  // APMemory: mode register write
+    localparam [OPCODE_LENGTH -1 : 0] OPCODE_READ = 8'h20;  // linear burst read
+    localparam [OPCODE_LENGTH -1 : 0] OPCODE_WRITE = 8'hA0;  // linear burst write
+    localparam [OPCODE_LENGTH -1 : 0] OPCODE_WRITE_ANY_REG = 8'hC0;  // mode register write
     // APMemory has no write enable command
-    localparam HAS_WRITE_ENABLE = (CHIP_TYPE == 1);
+    localparam HAS_WRITE_ENABLE = 0;
+    localparam [OPCODE_LENGTH -1 : 0] OPCODE_WRITE_ENABLE = 8'h06;
 
     // CE# low time of the current memory transaction (tCEM)
     reg [CEM_COUNTER_WIDTH-1:0] cem_counter;
@@ -188,7 +182,6 @@ module OSPIController_quad #(
     OctalSPI_quad #(
         .ADDRESS_LENGTH(ADDRESS_LENGTH),
         .DATA_WIDTH(DATA_WIDTH),
-        .CHIP_TYPE(CHIP_TYPE),
         .BUS_CLOCK_NEGEDGE(BUS_CLOCK_NEGEDGE)
     ) SPI_Transmitter (
         .clk(clk),
@@ -200,7 +193,7 @@ module OSPIController_quad #(
         .i_config_read_data(config_read_data),
         .i_config_write_data(config_write_data),
         .i_config_write_address(config_write_address),
-        .i_register_write(control_state_reg == WRITE_CONFIG && CHIP_TYPE == 2),
+        .i_register_write(control_state_reg == WRITE_CONFIG),
         .i_last_word(last_word_reg),
         .i_data_word_mask(data_mask_reg),
         .i_data_write(data_in_muxed_reg),

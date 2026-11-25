@@ -23,7 +23,3 @@ master XDC (https://github.com/Digilent/digilent-xdc, MIT License,
 Copyright (c) Digilent):
 
   test/hardware_verification/octal_nexys_video/Nexys-Video-Master_Quad.xdc
-
-The vendor memory simulation models used by some tests (test/memory_models/)
-are not part of this repository and must be downloaded separately under their
-own license terms.

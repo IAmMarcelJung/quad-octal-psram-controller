@@ -15,7 +15,6 @@ module OctalSPI_quad #(
     parameter ADDRESS_LENGTH = 32,  // address is always 32 bit long
     parameter DATA_WIDTH = 32,
     parameter STRB_WIDTH = DATA_WIDTH / 8,
-    parameter CHIP_TYPE = -1,  // 1 is Infineon, 2 is APMemory
     // 0: bus clock from a posedge register, the data changes together with the clock edge (edge aligned)
     // 1: bus clock from a negedge register half a clk period earlier, the data is centre aligned
     //    (half a clk period setup and hold), read data is captured on the negedge as well.
@@ -76,8 +75,6 @@ module OctalSPI_quad #(
     wire                   en_data_strobe;
     reg  [ STRB_WIDTH-1:0] data_strobe_out_reg;
     reg  [ STRB_WIDTH-1:0] data_strobe_out_nxt;
-    (* dont_touch = "true" *)
-    wire                   data_strobe_in;
     reg                    recieved_next_word_reg;
 
     reg                    has_latency_reg;
@@ -127,15 +124,14 @@ module OctalSPI_quad #(
     // constants
     localparam integer ADDRESS_CYCLES = 4;
     localparam integer OPCODE_CYCLES = 2;
-    localparam INFINEON_LATENCY_CYCLES = 7;
     localparam APMEMORY_LATENCY_CYCLES = 5;
     // times two because of the two clock edges
-    localparam integer LATENCY_CYCLES = (CHIP_TYPE == 1) ? INFINEON_LATENCY_CYCLES * 2 : APMEMORY_LATENCY_CYCLES * 2;    // ToDo think about a better switch (upstream issue #12)
+    localparam integer LATENCY_CYCLES = APMEMORY_LATENCY_CYCLES * 2;
     // the first latency already begins after the sample point of the upper address
     // therefore we have to subtract one cycle (-2) from the latency
-    localparam integer NUM_SHORT_LATENCY_CYCLES = (CHIP_TYPE == 1) ? LATENCY_CYCLES + 2 : LATENCY_CYCLES - 2;   // ToDo think about a better switch (upstream issue #12)
+    localparam integer NUM_SHORT_LATENCY_CYCLES = LATENCY_CYCLES - 2;
     // APMemory runs with fixed read latency (MR0[5] = 1, set by the controller after reset): 2 * LC for every read
-    localparam integer NUM_LONG_LATENCY_CYCLES = (CHIP_TYPE == 1) ? LATENCY_CYCLES * 2 + 2 : LATENCY_CYCLES * 2 - 2;
+    localparam integer NUM_LONG_LATENCY_CYCLES = LATENCY_CYCLES * 2 - 2;
 
     // Cycle counter of the state machine, sized for the largest value it is loaded with. Every state reloads it at
     // 0, it never counts below 0.
@@ -158,9 +154,6 @@ module OctalSPI_quad #(
 
     assign en_data_strobe  = (state_reg == SEND_DATA | (~i_config_read_data & (state_reg == CS_HIGH | state_reg == FINISH)));   // FINISH is needed, because otherwise the model does not store the value
     assign o_data_strobe = data_strobe_out_reg;
-    // DQS input: only used by the Infineon variant (latency indication), taken from chip 0. APMemory runs with fixed
-    // latency (MR0), so its DQS input is not used.
-    assign data_strobe_in = i_data_strobe[0];
     assign o_data_strobe_output_enable = {4{en_data_strobe}};
 
     // bus_clock_neg_reg is bus_clock_p2_reg half a clk earlier: it takes bus_clock_p2_nxt on the negedge before
@@ -181,9 +174,7 @@ module OctalSPI_quad #(
     // Every AXI word holds one byte per chip, so AXI byte address A is byte A / 4 in every chip.
     // A DDR transfer always moves a pair of bytes per chip, so the transfer starts on the even byte
     // (A / 8 pairs) and the first byte is padded when A / 4 is odd (is_transfer_front_padded).
-    // APMemory is byte addressed, the Infineon model counts 16 bit words.
-    assign chip_address = (CHIP_TYPE == 1) ? {{(WORD_LENGTH+1){1'b0}}, i_address[ADDRESS_LENGTH-1 : WORD_LENGTH+1]} :
-                                             {{WORD_LENGTH{1'b0}}, i_address[ADDRESS_LENGTH-1 : WORD_LENGTH+1], 1'b0};
+    assign chip_address = {{WORD_LENGTH{1'b0}}, i_address[ADDRESS_LENGTH-1 : WORD_LENGTH+1], 1'b0};
     reg is_transfer_front_padded_nxt;
     reg is_transfer_front_padded_reg;
 
@@ -235,7 +226,8 @@ module OctalSPI_quad #(
                     if (i_config_write_address) begin
                         count_nxt = COUNT_ADDRESS;
                         state_nxt = SEND_ADDRESS;
-                        has_latency_nxt = (CHIP_TYPE == 1) ? data_strobe_in : i_config_read_data;     // ToDo change (upstream issue #12)
+                        // fixed latency: reads wait the long latency, writes the short one
+                        has_latency_nxt = i_config_read_data;
                     end else state_nxt = CS_HIGH;
                 end
             end
@@ -244,7 +236,7 @@ module OctalSPI_quad #(
                 count_nxt = count_reg - 1;
 
                 if (count_reg == 0) begin
-                    if (has_latency_reg)  // ToDo change (upstream issue #12)
+                    if (has_latency_reg)
                         count_nxt = i_config_read_data ? COUNT_LONG_LATENCY_READ : COUNT_LONG_LATENCY_WRITE;
                     else
                         count_nxt = i_config_read_data ? COUNT_SHORT_LATENCY_READ : COUNT_SHORT_LATENCY_WRITE;
@@ -401,14 +393,8 @@ module OctalSPI_quad #(
     end
 
 
-    // This is only force a valid value in the CHIP_TYPE parameter
-    // generated by claude
     /* verilator lint_off MODMISSING */
     generate
-        if (CHIP_TYPE != 1 && CHIP_TYPE != 2) begin : g_chip_check
-            CHIP_must_be_set illegal_instance ();
-        end
-
         if (DATA_WIDTH != 32) begin : g_data_width_check
             Data_width_must_be_32 illegal_instance ();
         end
