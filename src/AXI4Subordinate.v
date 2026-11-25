@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0 AND MIT
+`default_nettype none
 /*
 Copyright (c) 2018 Alex Forencich
 Copyright (c) 2026 Timo Braungardt (modifications)
@@ -29,9 +30,6 @@ AXI Interface module
 Simple interface which accepts read and write requests.
 Can create backpreasure so the SPI can write the data out.
 */
-
-`timescale 1ns / 1ps
-`default_nettype none
 
 module AXI4Subordinate #(
     // Width of data bus in bits
@@ -507,5 +505,5 @@ module AXI4Subordinate #(
 
 endmodule
 
-// AXI4Subordinate sets `default_nettype none, restore the default for the files read after this one
+// restore the default for files compiled after this one
 `default_nettype wire
