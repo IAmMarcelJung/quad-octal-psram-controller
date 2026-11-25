@@ -11,7 +11,7 @@ module OctalMemoryController_quad #(
     parameter DATA_WIDTH = 32,
     parameter STRB_WIDTH = (DATA_WIDTH / 8),
     parameter ID_WIDTH = 8,
-    parameter CHIP_TYPE = -1,  // 1 for simulation with Infineon model, 2 for hardware with APMemory
+    parameter CHIP_TYPE = -1,  // must be 2 (APMemory APS12808L); the default stops elaboration on purpose
     // clk frequency range: minimum times (reset) are derived from the highest, maximum times (tCEM) from the lowest
     parameter integer CLK_FREQ_HZ = 50_000_000,  // highest clk frequency
     parameter integer CLK_FREQ_MIN_HZ = 10_000_000,  // lowest clk frequency (slower clock for timing problems / tests)
@@ -101,6 +101,10 @@ module OctalMemoryController_quad #(
 
     /* verilator lint_off MODMISSING */
     generate
+        if (CHIP_TYPE != 2) begin : gen_chip_check
+            CHIP_TYPE_must_be_2 illegal_instance ();
+        end
+
         if (R_FIFO_DEPTH == 0) begin : gen_r_direct
             assign s_axi_rid = ctrl_rid;
             assign s_axi_rdata = ctrl_rdata;
@@ -150,7 +154,6 @@ module OctalMemoryController_quad #(
     OSPIController_quad #(
         .ADDRESS_LENGTH(ADDR_WIDTH),
         .DATA_WIDTH(DATA_WIDTH),
-        .CHIP_TYPE(CHIP_TYPE),
         .CLK_FREQ_HZ(CLK_FREQ_HZ),
         .CLK_FREQ_MIN_HZ(CLK_FREQ_MIN_HZ),
         .MEMORY_RESET_CYCLES(MEMORY_RESET_CYCLES),

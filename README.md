@@ -24,11 +24,11 @@ DATA_WIDTH = 32,
 STRB_WIDTH = (DATA_WIDTH / 8),
 ID_WIDTH = 8,
 ```
-Set the CHIP_TYPE parameter to 1 for simulation or **2 for the hardware verification and tapeout**.
+Set the CHIP_TYPE parameter to **2 (APMemory APS12808L)** for simulation, hardware verification and tapeout:
 ```
-CHIP_TYPE = -1    // 1 for simulation with Infineon model, 2 for hardware with APMemory
+CHIP_TYPE = 2
 ```
-For the simulation a memory model from Infineon is used, for the hardware verification and tapeout we work with APMemory.  
+The simulation uses the behavioral model `test/sim_models/aps12808l_model.v`.
 The default parameter `-1` crashes a check in the synthesis to force the user to set a valid type.
 
 ### Code Formatting

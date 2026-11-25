@@ -39,7 +39,6 @@
               in
               {
                 cocotbext-axi = callPythonPackage ./nix/cocotbext-axi.nix { };
-                cocotbext-spi = callPythonPackage ./nix/cocotbext-spi.nix { };
               }
             ))
           ];
@@ -65,7 +64,6 @@
                 # Verification (test/cocotb)
                 cocotb
                 cocotbext-axi
-                cocotbext-spi
                 pytest
                 black
               ];
