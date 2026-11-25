@@ -40,7 +40,7 @@ module OSPIController_quad #(
     input  [ADDRESS_LENGTH-1:0] i_address,
     /* verilator lint_on UNUSEDSIGNAL */
     input                       i_write_enable,
-    input                       i_write_data_valid,  // wvalid of i_data_write
+    input                       i_write_data_valid,   // wvalid of i_data_write
     input                       i_last_word,
     input  [    STRB_WIDTH-1:0] i_data_word_mask,
     input  [    DATA_WIDTH-1:0] i_data_write,
@@ -335,11 +335,9 @@ module OSPIController_quad #(
             end else if (go) begin
                 data_in_muxed_nxt = i_data_write;
                 data_mask_nxt = i_data_word_mask;
-                write_next_word_nxt = 1;    // save the data and request the next data on the bus
+                write_next_word_nxt = 1;  // save the data and request the next data on the bus
                 last_word_nxt = i_last_word;
-            end
-            else
-                last_word_nxt = 0;
+            end else last_word_nxt = 0;
             write_stop_nxt = 1'b0;
         end
 
@@ -351,14 +349,13 @@ module OSPIController_quad #(
                 data_in_muxed_nxt = (config_is_config_operation) ? config_data_reg : i_data_write;
                 data_mask_nxt = (config_is_config_operation) ? {STRB_WIDTH{1'b0}} : i_data_word_mask;
                 // only set to 1, never reset to 0
-                if (i_last_word)
-                    last_word_nxt = 1'b1;
+                if (i_last_word) last_word_nxt = 1'b1;
 
                 // write without a beat (manager stalls) or tCEM reached: send this word masked as the last one,
                 // so the memory transaction ends on a full clock, the rest is written after a restart
                 if (control_state_reg == WRITE && !last_word_reg && !write_word_valid) begin
-                    data_mask_nxt = {STRB_WIDTH{1'b1}};
-                    last_word_nxt = 1'b1;
+                    data_mask_nxt  = {STRB_WIDTH{1'b1}};
+                    last_word_nxt  = 1'b1;
                     write_stop_nxt = 1'b1;
                 end
 

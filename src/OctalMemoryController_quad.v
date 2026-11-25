@@ -22,7 +22,7 @@ module OctalMemoryController_quad #(
     parameter integer R_FIFO_DEPTH = 0
 ) (
     input clk,
-    input rstn,  // active low, asynchronous assert, synchronous release (SoC: resetn_async)
+    input rstn, // active low, asynchronous assert, synchronous release (SoC: resetn_async)
 
     // SPI Pins
     output [3:0] o_spi_bus_clock,
@@ -80,16 +80,16 @@ module OctalMemoryController_quad #(
     input  wire                  s_axi_rready
 );
 
-    wire spi_busy;
-    wire spi_next_word;
-    wire spi_recieved_next_word;
+    wire                  spi_busy;
+    wire                  spi_next_word;
+    wire                  spi_recieved_next_word;
     wire [ADDR_WIDTH-1:0] axi_address;
     wire [DATA_WIDTH-1:0] axi_data_read;
     wire [DATA_WIDTH-1:0] axi_data_write;
-    wire axi_write_enable;
-    wire axi_write_data_valid;
-    wire axi_last_word;
-    wire axi_start_transaction;
+    wire                  axi_write_enable;
+    wire                  axi_write_data_valid;
+    wire                  axi_last_word;
+    wire                  axi_start_transaction;
 
     // R channel between AXI4Subordinate and the optional read data FIFO
     wire [  ID_WIDTH-1:0] ctrl_rid;
@@ -113,7 +113,7 @@ module OctalMemoryController_quad #(
         end else begin : gen_r_fifo
             localparam integer RW = ID_WIDTH + DATA_WIDTH + 3;  // entry: id, data, resp, last
             localparam integer AW = $clog2(R_FIFO_DEPTH);
-            reg  [      RW-1:0] r_fifo_mem      [0:R_FIFO_DEPTH-1];
+            reg  [      RW-1:0] r_fifo_mem                               [0:R_FIFO_DEPTH-1];
             reg  [        AW:0] r_fifo_count;
             reg  [      AW-1:0] r_fifo_wr_ptr;
             reg  [      AW-1:0] r_fifo_rd_ptr;
@@ -121,14 +121,15 @@ module OctalMemoryController_quad #(
             wire                r_fifo_out_last;
             wire                r_fifo_push = ctrl_rvalid & ctrl_rready;
             wire                r_fifo_pop = s_axi_rvalid & s_axi_rready;
-            assign ctrl_rready  = ~r_fifo_count[AW];  // not full
+            assign ctrl_rready = ~r_fifo_count[AW];  // not full
             assign s_axi_rvalid = (r_fifo_count != 0);
             assign {r_fifo_out_id, s_axi_rdata, s_axi_rresp, r_fifo_out_last} = r_fifo_mem[r_fifo_rd_ptr];
             // RID/RLAST are 0 while empty: the FIFO RAM has no reset and interconnects may route R by RID with RVALID low
-            assign s_axi_rid   = s_axi_rvalid ? r_fifo_out_id : {ID_WIDTH{1'b0}};
+            assign s_axi_rid = s_axi_rvalid ? r_fifo_out_id : {ID_WIDTH{1'b0}};
             assign s_axi_rlast = s_axi_rvalid & r_fifo_out_last;
             always @(posedge clk) begin
-                if (r_fifo_push) r_fifo_mem[r_fifo_wr_ptr] <= {ctrl_rid, ctrl_rdata, ctrl_rresp, ctrl_rlast};
+                if (r_fifo_push)
+                    r_fifo_mem[r_fifo_wr_ptr] <= {ctrl_rid, ctrl_rdata, ctrl_rresp, ctrl_rlast};
             end
             always @(posedge clk or negedge rstn) begin
                 if (!rstn) begin

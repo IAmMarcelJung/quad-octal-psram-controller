@@ -52,7 +52,7 @@ module AXI4Subordinate #(
     input  wire                  i_busy,
     output wire                  o_last_word,
     output wire                  o_write_enable,
-    output wire                  o_write_data_valid,  // wvalid of the beat on o_write_data
+    output wire                  o_write_data_valid,   // wvalid of the beat on o_write_data
     output wire                  o_start_transaction,
     output wire [ADDR_WIDTH-1:0] o_address,
     output wire [DATA_WIDTH-1:0] o_write_data,
@@ -140,7 +140,9 @@ module AXI4Subordinate #(
 
     reg [1:0] read_state_reg;
     reg [1:0] read_state_next;
-    reg read_drop_reg, read_drop_next;  // a word could not be taken, ignore the rest until the restart
+    // a word could not be taken, ignore the rest until the restart
+    reg read_drop_reg;
+    reg read_drop_next;
 
     // Write FSM
     localparam [1:0] WRITE_STATE_IDLE = 2'd0;
@@ -403,7 +405,7 @@ module AXI4Subordinate #(
             READ_STATE_BURST: begin
                 if (read_word_ready & ~read_drop_reg & ~read_can_load) begin
                     // manager stalls: drop this word and the rest of the memory transaction, read again after a restart
-                    read_drop_next = 1'b1;
+                    read_drop_next  = 1'b1;
                     read_state_next = READ_STATE_BURST;
                 end else if (read_word_ready & ~read_drop_reg) begin
                     mem_rd_en = 1'b1;

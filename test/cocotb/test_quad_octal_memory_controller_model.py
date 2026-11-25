@@ -26,10 +26,18 @@ def get_memory_quad(dut, addr, num_bytes):
     read_length = num_bytes // 4
     memory_data = []
 
-    memory_data_0 = MemoryModelHelper.get_memory_s70kl1283(dut.gen_memory[0].Memory, addr, read_length)
-    memory_data_1 = MemoryModelHelper.get_memory_s70kl1283(dut.gen_memory[1].Memory, addr, read_length)
-    memory_data_2 = MemoryModelHelper.get_memory_s70kl1283(dut.gen_memory[2].Memory, addr, read_length)
-    memory_data_3 = MemoryModelHelper.get_memory_s70kl1283(dut.gen_memory[3].Memory, addr, read_length)
+    memory_data_0 = MemoryModelHelper.get_memory_s70kl1283(
+        dut.gen_memory[0].Memory, addr, read_length
+    )
+    memory_data_1 = MemoryModelHelper.get_memory_s70kl1283(
+        dut.gen_memory[1].Memory, addr, read_length
+    )
+    memory_data_2 = MemoryModelHelper.get_memory_s70kl1283(
+        dut.gen_memory[2].Memory, addr, read_length
+    )
+    memory_data_3 = MemoryModelHelper.get_memory_s70kl1283(
+        dut.gen_memory[3].Memory, addr, read_length
+    )
 
     for i in range(read_length):
         memory_data.append(memory_data_0[i])
@@ -85,7 +93,9 @@ async def wait_for_idle(dut):
 
 
 @cocotb.test()
-@cocotb.parametrize(params=[(4, 0x0100), (8, 0x0200), (16, 0x0200), (128, 0x0300), (256, 0x1000),(512, 0x1100)])
+@cocotb.parametrize(
+    params=[(4, 0x0100), (8, 0x0200), (16, 0x0200), (128, 0x0300), (256, 0x1000), (512, 0x1100)]
+)
 async def write_alligned_test(dut, params):
     c = Clock(dut.clk, 20, "ns")
     cocotb.start_soon(c.start())
@@ -107,7 +117,7 @@ async def write_alligned_test(dut, params):
     await T_rwr
 
     test_array = test_data.get_test_array()
-    
+
     memory_data = get_memory_quad(dut, addr, num_bytes)
     assert memory_data == test_array
 
@@ -147,7 +157,7 @@ async def write_length_test(dut):
     axi_master = AxiMaster(AxiBus.from_prefix(dut, "s_axi"), dut.clk, dut.reset)
     await reset_model(dut)
 
-    num_bytes = 4 
+    num_bytes = 4
     addr = 0x0008
     test_data = DummyData(num_bytes)
 
@@ -160,16 +170,16 @@ async def write_length_test(dut):
         await FallingEdge(dut.Controller.spi_busy)
     await T_rwr
 
-    memory_data = get_memory_quad(dut, addr, test_data.num_bytes*2)
+    memory_data = get_memory_quad(dut, addr, test_data.num_bytes * 2)
     temp_test_data = list(test_data.get_test_array())
-    temp_test_data.extend([0xff] *4)
+    temp_test_data.extend([0xFF] * 4)
     assert memory_data == temp_test_data
 
-    memory_data = get_memory_quad(dut, addr -1, 8)
-    assert memory_data == [0xff] *8
+    memory_data = get_memory_quad(dut, addr - 1, 8)
+    assert memory_data == [0xFF] * 8
 
-    memory_data = get_memory_quad(dut, addr +1, 8)
-    assert memory_data == [0xff] *8
+    memory_data = get_memory_quad(dut, addr + 1, 8)
+    assert memory_data == [0xFF] * 8
 
 
 @cocotb.test()
@@ -184,10 +194,10 @@ async def write_byte_masking(dut):
     addr = 0x0010
 
     test_data = DummyData(4)
-    test_data._array = [0]*4
-    
+    test_data._array = [0] * 4
+
     set_memory_quad(dut, addr, test_data)
-    await axi_master.write(addr+1, b'\xAA\xBB')   # WSTRB = 0b0110
+    await axi_master.write(addr + 1, b"\xaa\xbb")  # WSTRB = 0b0110
     if dut.Controller.spi_busy.value == True:
         await FallingEdge(dut.Controller.spi_busy)
     await T_rwr
@@ -197,11 +207,11 @@ async def write_byte_masking(dut):
     assert memory_data[1] == 0xAA
     assert memory_data[2] == 0xBB
 
-    await axi_master.write(addr+3, b'\xCC')       # WSTRB = 0b1000
+    await axi_master.write(addr + 3, b"\xcc")  # WSTRB = 0b1000
     if dut.Controller.spi_busy.value == True:
         await FallingEdge(dut.Controller.spi_busy)
     await T_rwr
-    
+
     memory_data = get_memory_quad(dut, addr, 8)
     assert memory_data[0] == 0
     assert memory_data[1] == 0xAA
@@ -226,9 +236,9 @@ async def unalligned_access_front_test(dut, params):
     num_bytes, addr = params
     test_data = DummyData(num_bytes)
 
-    overwrite_data = DummyData(num_bytes*2)
-    overwrite_data._array = [0xff]*(num_bytes*2)
-    set_memory_quad(dut, addr-1, overwrite_data)
+    overwrite_data = DummyData(num_bytes * 2)
+    overwrite_data._array = [0xFF] * (num_bytes * 2)
+    set_memory_quad(dut, addr - 1, overwrite_data)
 
     timeout = Timer(200, unit="us")
     write_task = cocotb.start_soon(axi_master.write(addr, test_data.get_test_array()))
@@ -239,10 +249,9 @@ async def unalligned_access_front_test(dut, params):
 
     await T_rwr
 
-    
-    memory_data = get_memory_quad(dut, addr, num_bytes*2)
+    memory_data = get_memory_quad(dut, addr, num_bytes * 2)
     temp_test_data = []
-    temp_test_data.extend([0xff] *4)
+    temp_test_data.extend([0xFF] * 4)
     temp_test_data.extend(list(test_data.get_test_array()))
     assert memory_data == temp_test_data
 
@@ -264,9 +273,9 @@ async def unalligned_access_front_back_test(dut, params):
     num_bytes, addr = params
     test_data = DummyData(num_bytes)
 
-    overwrite_data = DummyData(num_bytes*2)
-    overwrite_data._array = [0xff]*(num_bytes*2)
-    set_memory_quad(dut, addr-1, overwrite_data)
+    overwrite_data = DummyData(num_bytes * 2)
+    overwrite_data._array = [0xFF] * (num_bytes * 2)
+    set_memory_quad(dut, addr - 1, overwrite_data)
 
     timeout = Timer(200, unit="us")
     write_task = cocotb.start_soon(axi_master.write(addr, test_data.get_test_array()))
@@ -277,12 +286,11 @@ async def unalligned_access_front_back_test(dut, params):
 
     await T_rwr
 
-    
-    memory_data = get_memory_quad(dut, addr, num_bytes*2)
+    memory_data = get_memory_quad(dut, addr, num_bytes * 2)
     temp_test_data = []
-    temp_test_data.extend([0xff] *4)
+    temp_test_data.extend([0xFF] * 4)
     temp_test_data.extend(list(test_data.get_test_array()))
-    temp_test_data.extend([0xff] *4)
+    temp_test_data.extend([0xFF] * 4)
     assert memory_data == temp_test_data
 
 
@@ -310,7 +318,7 @@ async def read_write_alligned_test(dut, params):
     await T_rwr
 
     test_array = test_data.get_test_array()
-    
+
     memory_data = get_memory_quad(dut, addr, num_bytes)
     assert memory_data == test_array
 
@@ -362,7 +370,6 @@ async def read_read_alligned_test(dut, params):
     assert list(data.data) == test_data.get_test_array()
 
 
-
 @cocotb.test()
 @cocotb.parametrize(params=[(128, 0x0300)])
 async def write_idle_cycles_test(dut, params):
@@ -389,7 +396,7 @@ async def write_idle_cycles_test(dut, params):
     await T_rwr
 
     test_array = test_data.get_test_array()
-    
+
     memory_data = get_memory_quad(dut, addr, num_bytes)
     assert memory_data == test_array
 

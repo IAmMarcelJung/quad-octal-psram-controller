@@ -112,15 +112,15 @@ module OctalSPI_quad #(
 
     // Logic stuff
     (* dont_touch = "true" *)
-    reg     [INDEX_STATES_MSB:0] state_reg;
-    reg     [INDEX_STATES_MSB:0] state_nxt;
+    reg  [INDEX_STATES_MSB:0] state_reg;
+    reg  [INDEX_STATES_MSB:0] state_nxt;
 
-    reg     [    DATA_WIDTH-1:0] data_read_reg;
-    reg                          need_next_word_nxt;
-    reg                          need_next_word_reg;
-    reg                          need_buffer_word_nxt;
-    reg                          need_buffer_word_reg;
-    wire    [ADDRESS_LENGTH-1:0] chip_address;
+    reg  [    DATA_WIDTH-1:0] data_read_reg;
+    reg                       need_next_word_nxt;
+    reg                       need_next_word_reg;
+    reg                       need_buffer_word_nxt;
+    reg                       need_buffer_word_reg;
+    wire [ADDRESS_LENGTH-1:0] chip_address;
 
     assign o_data_read = data_read_reg;
 
@@ -246,7 +246,8 @@ module OctalSPI_quad #(
                 if (count_reg == 0) begin
                     if (has_latency_reg)  // ToDo change (upstream issue #12)
                         count_nxt = i_config_read_data ? COUNT_LONG_LATENCY_READ : COUNT_LONG_LATENCY_WRITE;
-                    else count_nxt = i_config_read_data ? COUNT_SHORT_LATENCY_READ : COUNT_SHORT_LATENCY_WRITE;
+                    else
+                        count_nxt = i_config_read_data ? COUNT_SHORT_LATENCY_READ : COUNT_SHORT_LATENCY_WRITE;
 
                     state_nxt = WAIT_LATENCY;
 

@@ -177,7 +177,10 @@ async def axi_quiet_during_reset_test(dut):
     # the manager gets no reset signal, so it keeps its requests valid during the reset
     axi = AxiMaster(AxiBus.from_prefix(dut, "s_axi"), dut.clk)
     init_done = dut.Controller.SPI_Controller.init_done
-    outputs = {name: getattr(dut, f"s_axi_{name}") for name in ["awready", "wready", "bvalid", "arready", "rvalid"]}
+    outputs = {
+        name: getattr(dut, f"s_axi_{name}")
+        for name in ["awready", "wready", "bvalid", "arready", "rvalid"]
+    }
 
     def check_quiet(phase):
         for name, sig in outputs.items():
@@ -204,7 +207,9 @@ async def axi_quiet_during_reset_test(dut):
         check_quiet("during the memory initialization")
         cycles += 1
         assert cycles < 40000, "initialization did not finish"
-    assert dut.s_axi_awvalid.value == 1 and dut.s_axi_arvalid.value == 1, "requests not pending until init done"
+    assert (
+        dut.s_axi_awvalid.value == 1 and dut.s_axi_arvalid.value == 1
+    ), "requests not pending until init done"
     assert bytes(mem_get(dut, write_addr, 64)) == bytes(64), "memory written before init done"
 
     write_result = await with_timeout(write)
@@ -226,7 +231,9 @@ async def no_unknown_commands_test(dut):
     await with_timeout(axi.read(0x100, 8))
     await wait_idle(dut)
     after = unknown_commands(dut)
-    assert after == before, f"unknown commands sent to the memory: {[a - b for a, b in zip(after, before)]}"
+    assert (
+        after == before
+    ), f"unknown commands sent to the memory: {[a - b for a, b in zip(after, before)]}"
 
 
 @cocotb.test()
@@ -481,7 +488,9 @@ async def dma_copy_test(dut, seed):
     for k in range(bursts):
         chunk = src[64 * k : 64 * (k + 1)]
         axi.write_if.w_channel.pause = True
-        write = cocotb.start_soon(axi.write(dst_addr + 64 * k, bytes(b ^ 0xA5 for b in chunk), awid=0x40))
+        write = cocotb.start_soon(
+            axi.write(dst_addr + 64 * k, bytes(b ^ 0xA5 for b in chunk), awid=0x40)
+        )
         await ClockCycles(dut.clk, rnd.randrange(1, 8))
         axi.read_if.r_channel.set_pause_generator(pauses())
         try:
@@ -540,17 +549,23 @@ async def queued_bursts_with_stall_test(dut):
         base = 0x9000
         chunks = [pattern(4 * beats, 70 + beats + i) for i in range(6)]
         axi.write_if.w_channel.set_pause_generator(pauses())
-        writes = [cocotb.start_soon(axi.write(base + 4 * beats * i, c)) for i, c in enumerate(chunks)]
+        writes = [
+            cocotb.start_soon(axi.write(base + 4 * beats * i, c)) for i, c in enumerate(chunks)
+        ]
         for t in writes:
             if not t.done():
                 await with_timeout(t, timeout_us=2000)
         axi.write_if.w_channel.clear_pause_generator()
         axi.write_if.w_channel.pause = False
         await wait_idle(dut)
-        assert bytes(mem_get(dut, base, 4 * beats * len(chunks))) == b"".join(chunks), f"{beats} beats: write"
+        assert bytes(mem_get(dut, base, 4 * beats * len(chunks))) == b"".join(
+            chunks
+        ), f"{beats} beats: write"
 
         axi.read_if.r_channel.set_pause_generator(pauses())
-        reads = [cocotb.start_soon(axi.read(base + 4 * beats * i, 4 * beats)) for i in range(len(chunks))]
+        reads = [
+            cocotb.start_soon(axi.read(base + 4 * beats * i, 4 * beats)) for i in range(len(chunks))
+        ]
         for i, t in enumerate(reads):
             result = t.result() if t.done() else await with_timeout(t, timeout_us=2000)
             assert result.data == chunks[i], f"{beats} beats: read burst {i}"
@@ -704,7 +719,9 @@ async def unsupported_burst_test(dut):
         ("narrow FIXED", AxiBurstType.FIXED, 0, 4),
     ]
     for name, burst, size, length in cases:
-        result = await with_timeout(axi.write(base, bytes([0xEE] * length), burst=burst, size=size, awid=0x21))
+        result = await with_timeout(
+            axi.write(base, bytes([0xEE] * length), burst=burst, size=size, awid=0x21)
+        )
         assert result.resp == AxiResp.SLVERR, f"{name} write: {result.resp}"
         result = await with_timeout(axi.read(base, length, burst=burst, size=size, arid=0x22))
         assert result.resp == AxiResp.SLVERR, f"{name} read: {result.resp}"
@@ -734,7 +751,9 @@ async def unsupported_burst_test(dut):
     bad_result = bad.result() if bad.done() else await with_timeout(bad)
     assert bad_result.resp == AxiResp.SLVERR
     await wait_idle(dut)
-    assert bytes(mem_get(dut, base, 64)) == bytes(expected), "concurrent unsupported write changed the memory"
+    assert bytes(mem_get(dut, base, 64)) == bytes(
+        expected
+    ), "concurrent unsupported write changed the memory"
     check_no_model_errors(dut, before)
 
 
@@ -842,8 +861,12 @@ async def ce_low_time_test(dut, t_cem_ns):
         f"CE# low: write {t_write} ns, read {t_read} ns, read with RREADY stall {t_read_stall} ns, "
         f"write with WVALID stall {t_write_stall} ns"
     )
-    for name, t in [("write", t_write), ("read", t_read), ("stalled read", t_read_stall),
-                    ("stalled write", t_write_stall)]:
+    for name, t in [
+        ("write", t_write),
+        ("read", t_read),
+        ("stalled read", t_read_stall),
+        ("stalled write", t_write_stall),
+    ]:
         assert t <= t_cem_ns, f"{name}: CE# low for {t} ns > tCEM {t_cem_ns} ns"
 
 
@@ -921,7 +944,9 @@ async def latency_setup_test(dut):
     await with_timeout(axi.read(0x0, 4))
     await wait_idle(dut)
     for i, m in enumerate(models(dut)):
-        assert int(m.mr0.value) & 0x20, f"chip {i}: MR0 = {int(m.mr0.value):#04x}, latency is still variable"
+        assert (
+            int(m.mr0.value) & 0x20
+        ), f"chip {i}: MR0 = {int(m.mr0.value):#04x}, latency is still variable"
 
 
 @cocotb.test()
@@ -959,15 +984,26 @@ async def reset_during_read_test(dut):
     readback = await with_timeout(axi.read(0x0, 1024))
     await wait_idle(dut)
     for i, m in enumerate(models(dut)):
-        assert int(m.mr0.value) & 0x20, f"chip {i}: MR0 = {int(m.mr0.value):#04x}, not written after the reset"
+        assert (
+            int(m.mr0.value) & 0x20
+        ), f"chip {i}: MR0 = {int(m.mr0.value):#04x}, not written after the reset"
     assert unknown_commands(dut) == before_unknown, "unknown commands after the reset"
     assert readback.data == data
     check_no_model_errors(dut, before)
 
 
 # --------------------------------------------------------------------------------------------------------------
-def run(test_filter=None, pushout=0, wave=False, init_byte=-1, cem_max_cycles=None, bus_clock_negedge=1, r_fifo_depth=0, build_suffix="",
-        clk_period_ns=20):
+def run(
+    test_filter=None,
+    pushout=0,
+    wave=False,
+    init_byte=-1,
+    cem_max_cycles=None,
+    bus_clock_negedge=1,
+    r_fifo_depth=0,
+    build_suffix="",
+    clk_period_ns=20,
+):
     """cem_max_cycles=None keeps the controller default (derived from CLK_FREQ_MIN_HZ)."""
     proj_path = Path(__file__).resolve().parent
     sources = [
@@ -993,7 +1029,10 @@ def run(test_filter=None, pushout=0, wave=False, init_byte=-1, cem_max_cycles=No
         parameters["CEM_MAX_CYCLES"] = cem_max_cycles
     sim = os.getenv("SIM", "icarus")
     runner = get_runner(sim)
-    build_dir = proj_path / f"sim_build_apmemory_{pushout}_{init_byte}_{cem_max_cycles or 'def'}_{bus_clock_negedge}_{r_fifo_depth}{build_suffix}"
+    build_dir = (
+        proj_path
+        / f"sim_build_apmemory_{pushout}_{init_byte}_{cem_max_cycles or 'def'}_{bus_clock_negedge}_{r_fifo_depth}{build_suffix}"
+    )
     if clk_period_ns != 20:
         build_dir = build_dir.with_name(build_dir.name + f"_{clk_period_ns}ns")
     runner.build(
@@ -1157,9 +1196,11 @@ async def throughput_test(dut):
                     or (dut.s_axi_arvalid.value == 1 and dut.s_axi_arready.value == 1)
                 ):
                     first = cycle
-                if (dut.s_axi_rvalid.value == 1 and dut.s_axi_rready.value == 1 and dut.s_axi_rlast.value == 1) or (
-                    dut.s_axi_bvalid.value == 1 and dut.s_axi_bready.value == 1
-                ):
+                if (
+                    dut.s_axi_rvalid.value == 1
+                    and dut.s_axi_rready.value == 1
+                    and dut.s_axi_rlast.value == 1
+                ) or (dut.s_axi_bvalid.value == 1 and dut.s_axi_bready.value == 1):
                     last = cycle
 
         def pauses():
@@ -1264,7 +1305,9 @@ async def sustained_test(dut):
         now = get_sim_time("ns")
         if now - window_start >= window_ns:
             mbs = window_bytes / (now - window_start) * 1e3
-            lines.append(f"{workload:<13} {(window_start - start) / 1e6:>6.1f}-{(now - start) / 1e6:>6.1f} ms  {mbs:>6.1f} MB/s")
+            lines.append(
+                f"{workload:<13} {(window_start - start) / 1e6:>6.1f}-{(now - start) / 1e6:>6.1f} ms  {mbs:>6.1f} MB/s"
+            )
             dut._log.info(lines[-1])
             window_start, window_bytes = now, 0
         if now - start >= duration_ns:
@@ -1327,9 +1370,11 @@ async def burst_stall_sweep_test(dut):
             if prev_ce == 1 and ce == 0 and state["first"] is not None:
                 state["windows"] += 1
             prev_ce = ce
-            if (dut.s_axi_rvalid.value == 1 and dut.s_axi_rready.value == 1 and dut.s_axi_rlast.value == 1) or (
-                dut.s_axi_bvalid.value == 1 and dut.s_axi_bready.value == 1
-            ):
+            if (
+                dut.s_axi_rvalid.value == 1
+                and dut.s_axi_rready.value == 1
+                and dut.s_axi_rlast.value == 1
+            ) or (dut.s_axi_bvalid.value == 1 and dut.s_axi_bready.value == 1):
                 state["last"] = cycle
 
     lines = []
@@ -1358,11 +1403,15 @@ async def burst_stall_sweep_test(dut):
                     channel.pause = False
                 await wait_idle(dut)
                 if op == "write":
-                    assert bytes(mem_get(dut, addr, 4 * beats)) == data, f"write {beats} {duty}: data mismatch"
+                    assert (
+                        bytes(mem_get(dut, addr, 4 * beats)) == data
+                    ), f"write {beats} {duty}: data mismatch"
                 cycles = state["last"] - state["first"] + 1
                 mbs = 4 * beats / (cycles * CLK_PERIOD_NS * 1e-9) / 1e6
-                lines.append(f"cem={cem} {op:<5} beats={beats:>3} duty={duty} cycles={cycles:>5} "
-                             f"ce_windows={state['windows']:>3} MB/s={mbs:6.1f}")
+                lines.append(
+                    f"cem={cem} {op:<5} beats={beats:>3} duty={duty} cycles={cycles:>5} "
+                    f"ce_windows={state['windows']:>3} MB/s={mbs:6.1f}"
+                )
                 dut._log.info(lines[-1])
 
     # CPU pattern: 32 sequential single-beat reads, each issued after the previous one completed
@@ -1402,9 +1451,11 @@ async def burst_stall_sweep_test(dut):
     mon.cancel()
     assert got == data, "single-beat reads: data mismatch"
     total = t["last"] - t["first"] + 1
-    lines.append(f"cem={cem} cpu32 single-beat reads: total={total} cycles/beat={total / n:.1f} "
-                 f"ARVALID->RVALID min/max={min(latencies)}/{max(latencies)} ce_windows={t['windows']} "
-                 f"MB/s={4 * n / (total * CLK_PERIOD_NS * 1e-9) / 1e6:.1f}")
+    lines.append(
+        f"cem={cem} cpu32 single-beat reads: total={total} cycles/beat={total / n:.1f} "
+        f"ARVALID->RVALID min/max={min(latencies)}/{max(latencies)} ce_windows={t['windows']} "
+        f"MB/s={4 * n / (total * CLK_PERIOD_NS * 1e-9) / 1e6:.1f}"
+    )
     dut._log.info(lines[-1])
 
     check_no_model_errors(dut, before)
